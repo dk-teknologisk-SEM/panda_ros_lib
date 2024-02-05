@@ -35,7 +35,7 @@
     1. ```catkin config --extend /opt/ros/${ROS_DISTRO} --cmake-args -DCMAKE_BUILD_TYPE=Release -DFranka_DIR:PATH=~/robosapiens/libfranka/build```
     1. ```catkin build```
     1. ```source ~/robosapiens/catkin_ws/devel/setup.bash```
-    1. ```echo 'source source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc```
+    1. ```echo 'source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc```
 
 1. Install Real Time Kernel: [Guide](https://frankaemika.github.io/docs/installation_linux.html#setting-up-the-real-time-kernel)
     1.```mkdir -p ~/robosapiens/rt-kernel && cd ~/robosapiens/rt-kernel``` 
