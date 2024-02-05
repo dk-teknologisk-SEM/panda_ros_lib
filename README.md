@@ -59,22 +59,23 @@
     ```
 
 1. Install MoveIt: [Guide](https://ros-planning.github.io/moveit_tutorials/doc/getting_started/getting_started.html)
-    1. rosdep update && sudo apt update && sudo apt dist-upgrade
-    1. sudo apt install ros-noetic-catkin python3-catkin-tools
-    1. sudo apt install python3-wstool
-    1. cd ~/robosapiens/catkin_ws/src
-    1. wstool init .
-    1. wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall
-    1. wstool remove moveit_tutorials
-    1. wstool update -t .
-    1. cd ~/robosapiens/catkin_ws
-    1. rosdep install -y --from-paths src --ignore-src --rosdistro noetic -y --skip-keys libfranka
-    1. catkin config --extend /opt/ros/${ROS_DISTRO} --cmake-args -DCMAKE_BUILD_TYPE=Release
-    1. catkin build
-    1. source ~/robosapiens/catkin_ws/devel/setup.bash
-    1. echo 'source source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc
+    1. ```rosdep update && sudo apt update && sudo apt dist-upgrade```
+    1. ```sudo apt install -y ros-noetic-catkin python3-catkin-tools```
+    1. ```sudo apt install python3-wstool```
+    1. ```cd ~/robosapiens/catkin_ws/src```
+    1. ```wstool init .```
+    1. ```wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall```
+    1. ```wstool remove moveit_tutorials```
+    1. ```wstool update -t .```
+    1. ```git clone https://github.com/ros-planning/panda_moveit_config.git -b noetic-devel```
+    1. ```cd ~/robosapiens/catkin_ws```
+    1. ```rosdep install -y --from-paths src --ignore-src --rosdistro noetic -y --skip-keys libfranka```
+    1. ```catkin config --extend /opt/ros/${ROS_DISTRO} --cmake-args -DCMAKE_BUILD_TYPE=Release```
+    1. ```catkin build```
+    1. ```source ~/robosapiens/catkin_ws/devel/setup.bash```
+    1. ```echo 'source source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc```
 1. Install panda_ros_lib
-    1. cd ~/robosapiens
+    1. ```cd ~/robosapiens```
     1. Clone Code: ```git clone git@github.com:dk-teknologisk-SEM/panda_ros_lib.git```
 
 # Run
