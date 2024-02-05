@@ -26,8 +26,8 @@
     1. curl -SLO https://www.kernel.org/pub/linux/kernel/projects/rt/5.9/patch-5.9.1-rt20.patch.xz
     1. curl -SLO https://www.kernel.org/pub/linux/kernel/projects/rt/5.9/patch-5.9.1-rt20.patch.sign
     1. xz -d *.xz
-    1. gpg2  --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 6092693E
-    1. gpg2 --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 2872E4CC
+    1. gpg2  --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 647F28654894E3BD457199BE38DBBDC86092693E
+    1. gpg2 --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 57892E705233051337F6FDD105641F175712FA5B
     1. gpg2 --verify linux-*.tar.sign
     1. gpg2 --verify patch-*.patch.sign
     1. tar xf linux-*.tar
