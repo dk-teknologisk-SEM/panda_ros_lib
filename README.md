@@ -23,7 +23,7 @@
 1. Install MoveIt: [Guide](https://ros-planning.github.io/moveit_tutorials/doc/getting_started/getting_started.html)
     1. ```cd ~/robosapiens/catkin_ws/src```
     1. ```sudo apt update && sudo apt dist-upgrade```
-    1. ```sudo apt install -y ros-noetic-catkin python3-catkin-tools python3-wstool python3-rosdep2```
+    1. ```sudo apt install -y ros-noetic-catkin python3-catkin-tools python3-wstool python3-rosdep2 ros-noetic-franka-description```
     1. ```rosdep update```
     1. ```wstool init .```
     1. ```wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall```
@@ -32,7 +32,7 @@
     1. ```git clone https://github.com/ros-planning/panda_moveit_config.git -b noetic-devel```
     1. ```cd ~/robosapiens/catkin_ws```
     1. ```rosdep install -y --from-paths src --ignore-src --rosdistro noetic -y --skip-keys libfranka```
-    1. ```catkin config --extend /opt/ros/${ROS_DISTRO} --cmake-args -DCMAKE_BUILD_TYPE=Release -DFranka_DIR:PATH=~/robosapiens/libfranka/build```
+    1. ```catkin config --extend /opt/ros/${ROS_DISTRO} --skiplist franka_description --cmake-args -DCMAKE_BUILD_TYPE=Release -DFranka_DIR:PATH=~/robosapiens/libfranka/build```
     1. ```catkin build```
     1. ```source ~/robosapiens/catkin_ws/devel/setup.bash```
     1. ```echo 'source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc```
