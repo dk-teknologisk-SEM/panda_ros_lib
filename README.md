@@ -1,6 +1,12 @@
 # Install
 1. Install Ubuntu 20.04 Focal Fossa: [Guide](https://ubuntu.com/tutorials/install-ubuntu-desktop)
 1. Install ROS Noetic: [Guide](https://wiki.ros.org/noetic/Installation/Ubuntu)
+    1.```sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'```
+    1. ```sudo apt install -y curl```
+    1. ```curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -```
+    1. ```sudo apt update```
+    1. ```sudo apt install ros-noetic-desktop-full```
+    1. ```echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc```
 1. Install LibFranka: [Guide](https://frankaemika.github.io/docs/installation_linux.html#building-libfranka)
     1. ```mkdir ~/robosapiens && cd ~/robosapiens```
     1. ```sudo apt install build-essential cmake git libpoco-dev libeigen3-dev```
@@ -18,12 +24,14 @@
     1. ```catkin init src```
     1. ```git clone --recursive https://github.com/frankaemika/franka_ros src/franka_ros && cd src/franka_ros```
     1. ```git checkout 0.8.0```
+    1. ```sed -i "s/_arm.urdf.xacro/\/panda.urdf.xacro arm_id:='panda'/g" ~/robosapiens/catkin_ws/src/franka_ros/franka_control/launch/franka_control.launch```
     <!-- 1. ```catkin_make -DCMAKE_BUILD_TYPE=Release -DFranka_DIR:PATH=~/robosapiens/libfranka/build``` -->
 
 1. Install MoveIt: [Guide](https://ros-planning.github.io/moveit_tutorials/doc/getting_started/getting_started.html)
     1. ```cd ~/robosapiens/catkin_ws/src```
     1. ```sudo apt update && sudo apt dist-upgrade```
-    1. ```sudo apt install -y ros-noetic-catkin python3-catkin-tools python3-wstool python3-rosdep2 ros-noetic-franka-description```
+    1. ```sudo apt install -y ros-noetic-catkin python3-catkin-tools python3-wstool python3-rosdep2 ros-noetic-franka-description ros-noetic-joint-trajectory-controller```
+    1. ```sudo rosdep init```
     1. ```rosdep update```
     1. ```wstool init .```
     1. ```wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall```
@@ -34,6 +42,8 @@
     1. ```rosdep install -y --from-paths src --ignore-src --rosdistro noetic -y --skip-keys libfranka```
     1. ```catkin config --extend /opt/ros/${ROS_DISTRO} --skiplist franka_description --cmake-args -DCMAKE_BUILD_TYPE=Release -DFranka_DIR:PATH=~/robosapiens/libfranka/build```
     1. ```catkin build```
+    1. ```sudo apt install ros-noetic-desktop-full```
+    1. ```source /opt/ros/noetic/setup.bash```
     1. ```source ~/robosapiens/catkin_ws/devel/setup.bash```
     1. ```echo 'source ~/robosapiens/catkin_ws/devel/setup.bash' >> ~/.bashrc```
 
