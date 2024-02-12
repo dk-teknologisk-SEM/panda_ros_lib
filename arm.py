@@ -164,4 +164,18 @@ class PandaArm():
         return end_state
         # rprint("after ", self.speed) 
 
+    def relative_move(self, axis:int, distance: float):
+        if axis not in [0,1,2]:
+            rprint("Invalid axis")
+            return
+        
+        pose = self.get_current_pose()
+        if axis == 0:
+            pose.position.x += distance
+        elif axis == 1:
+            pose.position.y += distance
+        else:
+            pose.position.z += distance
+
+        self.move_to_cartesian(pose)
 
