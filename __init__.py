@@ -1,1 +1,1 @@
-from .arm import PandaArm, GripperInterface
+from .arm import PandaArm
