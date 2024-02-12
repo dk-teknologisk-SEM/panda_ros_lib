@@ -179,3 +179,21 @@ class PandaArm():
 
         self.move_to_cartesian(pose)
 
+    def rotate(self, x, y, z, move=True):
+        q_r=tf.transformations.quaternion_from_euler(x,y,z)
+        
+        current_orientation = self.get_current_pose().orientation
+
+        quaternion=tf.transformations.quaternion_multiply(q_r,[current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
+
+        # quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
+        ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
+
+        if move:
+            target_orientation = self.get_current_pose()
+            target_orientation.orientation = ori
+            self.move_to_cartesian(target_orientation)
+
+        return ori
+
+
