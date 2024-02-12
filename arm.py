@@ -112,14 +112,14 @@ class PandaArm():
         self.speed = speed
         self.move_group.set_max_velocity_scaling_factor(self.speed)
 
-    def get_speed(self):
+    def get_speed(self)->'float':
         return self.speed
 
     def move_to_cartesian(self, pose, wait=True):
         self.move_group.set_pose_target(pose)
         self.move_group.go(wait=wait)
 
-    def get_current_pose(self):
+    def get_current_pose(self)->'Pose':
         return self.move_group.get_current_pose().pose
 
     def contact(self):
