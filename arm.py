@@ -47,8 +47,8 @@ class PandaArm():
         self.force = None
         self.torque = None
         self.state = None
-        self.z_contact = False
-        self.z_collision = False
+        self.contact_state = []
+        self.collision_state = []
 
         self.lower_force = [10.0, 10.0, 10.0, 13.0, 13.0, 13.0]
         self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0]
@@ -62,8 +62,8 @@ class PandaArm():
 
     def _franka_state_callback(self, msg: FrankaState):
         self.state = msg
-        self.z_contact = msg.cartesian_contact[2] > 0
-        self.z_collision = msg.cartesian_collision[2] > 0
+        self.contact_state = msg.cartesian_contact
+        self.collision_state = msg.cartesian_collision
 
     def set_force_torque_collision_behavior(self, lower_torque, upper_torque, lower_force, upper_force):
         rospy.wait_for_service('/franka_control/set_force_torque_collision_behavior')
@@ -130,27 +130,38 @@ class PandaArm():
         self.move_to_cartesian(pose)
 
 
-    def move_to_contact(self, time=0.5, timeout=10.0):
+    def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0) -> 'tuple[list[float]]':
+
+        if not target_pose:
+            target_pose = self.get_current_pose()
+            target_pose.position.z -= search_distance
+
 
         current_speed = self.speed
         slow_speed = 0.02
         self.set_speed(slow_speed)
-        pose = self.get_current_pose()
-        pose.position.z -= 0.3
-        self.move_to_cartesian(pose, wait=False)
+
+        self.move_to_cartesian(target_pose, wait=False)
 
         start_time = rospy.get_time()
 
-        while not self.z_contact and rospy.get_time() - start_time < timeout:
-            # rprint(self.force.z)
-            sleep(0.01)
+        current_contact_state = self.contact_state
 
-        rprint(f"Before: Contact {self.z_contact}, Collision {self.z_collision}")
+        while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
+            # rprint(self.force.z)
+            current_contact_state = self.contact_state
+            sleep(0.01)
+        
+        end_state = (self.contact_state, self.collision_state)
+
+        rprint(f"Before: Contact {self.contact_state}, Collision {self.collision_state}")
         self.move_group.stop()
         sleep(time)
-        rprint(f"After: Contact {self.z_contact}, Collision {self.z_collision}")
+        rprint(f"After: Contact {self.contact_state}, Collision {self.collision_state}")
 
         self.set_speed(current_speed)
+
+        return end_state
         # rprint("after ", self.speed) 
 
 
