@@ -7,10 +7,11 @@ from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
 
-DEBUG = False
+DEBUG = True
 
 def rprint(msg):
     if DEBUG:
+        rospy.loginfo(msg)
 
 def eulerToQuaternion(current_orientation:Quaternion, x, y, z):
     q2=tf.transformations.quaternion_from_euler(x,y,z)
