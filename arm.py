@@ -6,9 +6,9 @@ from franka_msgs.srv import SetForceTorqueCollisionBehavior
 from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
+import numpy as np
 
 DEBUG = True
-
 def rprint(msg):
     if DEBUG:
         rospy.loginfo(msg)
@@ -40,10 +40,12 @@ class PandaArm():
 
         self.clear_error()
         self.gripper = GripperInterface()
+        self.gripper.calibrate()
 
         self.speed = 0.15
         self.set_speed(self.speed)
 
+        self.O_T_EE = None
         self.force = None
         self.torque = None
         self.state = None
@@ -64,6 +66,13 @@ class PandaArm():
         self.state = msg
         self.contact_state = msg.cartesian_contact
         self.collision_state = msg.cartesian_collision
+        self.O_T_EE = msg.O_T_EE
+
+    def get_base_rotation(self):
+        arr = np.array(self.O_T_EE)
+        reshaped_arr = arr.reshape(4,4)
+        rotation = reshaped_arr[:3,:3]
+        return tf.transformations.euler_from_matrix(rotation)
 
     def set_force_torque_collision_behavior(self, lower_torque, upper_torque, lower_force, upper_force):
         rospy.wait_for_service('/franka_control/set_force_torque_collision_behavior')
@@ -82,9 +91,12 @@ class PandaArm():
         self.error_publisher.publish(msg)
         sleep(3)
 
+    def align_to_base(self, x=True, y=True, z=False):
+        rprint("Aligning to base")
+        current_roatation_from_base = self.get_base_rotation()
+        rprint(f"Current rotation from base: {current_roatation_from_base}")
+        self.rotate(-(np.pi-current_roatation_from_base[0]) if x else 0, -(current_roatation_from_base[1]) if y else 0, -(current_roatation_from_base[2]) if z else 0)
     
-
-
     def move_to_neutral(self):
         # neutral_pose:
         #     panda_joint1: -0.017792060227770554
