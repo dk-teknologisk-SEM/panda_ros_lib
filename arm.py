@@ -35,6 +35,7 @@ class PandaArm():
         moveit_commander.roscpp_initialize("")
         rospy.init_node('arm', anonymous=True)
         self.move_group = moveit_commander.MoveGroupCommander("panda_arm")
+        self.move_group.set_end_effector_link("panda_hand_tcp")
 
         self.error_publisher = rospy.Publisher("/franka_control/error_recovery/goal", ErrorRecoveryActionGoal,queue_size=10)
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
@@ -134,7 +135,7 @@ class PandaArm():
         return self.speed
         
     def move_to_joint(self, pose, wait=True):
-        self.move_group.set_pose_target(pose, end_effector_link="")
+        self.move_group.set_pose_target(pose, end_effector_link="panda_hand_tcp")
         self.move_group.go(wait=wait)
 
 
