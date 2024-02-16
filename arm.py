@@ -43,6 +43,7 @@ class PandaArm():
 
         
         self.gripper = GripperInterface()
+        self.gripper.open()
         self.gripper.calibrate()
 
         self.speed = 0.15
