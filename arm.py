@@ -29,6 +29,7 @@ def quaternionToEuler(quaternion: Quaternion):
     
     return euler
 
+  
 class PandaArm():
     def __init__(self):
         moveit_commander.roscpp_initialize("")
@@ -39,7 +40,7 @@ class PandaArm():
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
 
-        self.clear_error()
+        
         self.gripper = GripperInterface()
         self.gripper.calibrate()
 
@@ -58,6 +59,9 @@ class PandaArm():
         self.lower_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]  
         self.set_force_torque_collision_behavior(self.lower_torque, self.upper_torque, self.lower_force, self.upper_force)
+        
+        self.clear_error()
+
 
     def _force_callback(self, msg: WrenchStamped):
         self.force = msg.wrench.force
@@ -220,7 +224,7 @@ class PandaArm():
             target_orientation = self.get_current_pose()
             target_orientation.orientation = ori
             self.move_to_cartesian(target_orientation)
-
+        
         return ori
 
 
