@@ -7,6 +7,7 @@ from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
 import numpy as np
+from iterativeTimeParameterization import IterativeParabolicTimeParameterization
 
 DEBUG = True
 def rprint(msg):
@@ -132,6 +133,18 @@ class PandaArm():
         self.move_group.set_pose_target(pose)
         self.move_group.go(wait=wait)
 
+
+    def move_to_cartesian(self, pose, wait=True, speed=0.15):
+        plan, fraction = self.move_group.compute_cartesian_path([pose], 0.01, 0.0)
+
+        #set cartesian speed using time parameterization
+        iptp = IterativeParabolicTimeParameterization()
+        plan = iptp.compute_time_stamps(plan, speed)
+
+        self.move_group.execute(plan, wait=wait)
+        
+        return plan
+
     def get_current_pose(self)->'Pose':
         return self.move_group.get_current_pose().pose
 
@@ -153,7 +166,7 @@ class PandaArm():
         slow_speed = 0.02
         self.set_speed(slow_speed)
 
-        self.move_to_cartesian(target_pose, wait=False)
+        self.move_to_cartesian(target_pose, wait=False, speed=slow_speed)
 
         start_time = rospy.get_time()
 
@@ -189,7 +202,9 @@ class PandaArm():
         else:
             pose.position.z += distance
 
-        self.move_to_cartesian(pose)
+        return self.move_to_cartesian(pose)
+
+        
 
     def rotate(self, x, y, z, move=True):
         q_r=tf.transformations.quaternion_from_euler(x,y,z)
