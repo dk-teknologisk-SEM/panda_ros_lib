@@ -143,9 +143,10 @@ class PandaArm():
     def move_to_cartesian(self, pose, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
         plan, fraction = self.move_group.compute_cartesian_path([pose], 0.01, 0.0)
 
-        #set cartesian speed using time parameterization
-        iptp = IterativeParabolicTimeParameterization()
-        plan = iptp.compute_time_stamps(plan, speed)
+        if not skip_parameterzation:
+            #set cartesian speed using time parameterization
+            iptp = IterativeParabolicTimeParameterization()
+            plan = iptp.compute_time_stamps(plan, speed, iteration_max=iterations)
 
         self.move_group.execute(plan, wait=wait)
         
@@ -225,7 +226,7 @@ class PandaArm():
         if move:
             target_orientation = self.get_current_pose()
             target_orientation.orientation = ori
-            self.move_to_cartesian(target_orientation)
+            self.move_to_cartesian(target_orientation, skip_parameterzation=True)
         
         return ori
 
