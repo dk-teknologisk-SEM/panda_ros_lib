@@ -138,7 +138,7 @@ class PandaArm():
         self.move_group.go(wait=wait)
 
 
-    def move_to_cartesian(self, pose, wait=True, speed=0.15):
+    def move_to_cartesian(self, pose, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
         plan, fraction = self.move_group.compute_cartesian_path([pose], 0.01, 0.0)
 
         #set cartesian speed using time parameterization

@@ -7,12 +7,12 @@ class IterativeParabolicTimeParameterization:
     def __init__(self):
         pass
 
-    def compute_time_stamps(self, plan: RobotTrajectory, speed):
+    def compute_time_stamps(self, plan: RobotTrajectory, speed, iteration_max=100):
 
         num_points = len(plan.joint_trajectory.points)
         time_diff = [0.0] * (num_points - 1)
         time_diff, plan = self.apply_velocity_constraints(plan, time_diff, speed)
-        time_diff, plan = self.apply_acceleration_constraints(plan, time_diff, speed)
+        time_diff, plan = self.apply_acceleration_constraints(plan, time_diff, speed, iteration_max)
         plan = self.update_trajectory(plan, time_diff)
 
 
@@ -76,7 +76,7 @@ class IterativeParabolicTimeParameterization:
 
         return dt2
     
-    def apply_acceleration_constraints(self, plan: RobotTrajectory, time_diff, speed):
+    def apply_acceleration_constraints(self, plan: RobotTrajectory, time_diff, speed, iteration_max=100):
         num_updates = 0
         iteration = 0
         backwards = False
@@ -166,7 +166,7 @@ class IterativeParabolicTimeParameterization:
 
                 backwards = not backwards
             
-            if not ((num_updates > 0) and (iteration < 100)):
+            if not ((num_updates > 0) and (iteration < iteration_max)):
                 break
 
         return time_diff, plan
