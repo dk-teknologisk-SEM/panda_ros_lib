@@ -132,9 +132,9 @@ class PandaArm():
 
     def get_speed(self)->'float':
         return self.speed
-
-    def move_to_cartesian(self, pose, wait=True):
-        self.move_group.set_pose_target(pose)
+        
+    def move_to_joint(self, pose, wait=True):
+        self.move_group.set_pose_target(pose, end_effector_link="")
         self.move_group.go(wait=wait)
 
 
@@ -156,7 +156,7 @@ class PandaArm():
         self.move_to_contact()
 
     def move(self, pose):   
-        self.move_to_cartesian(pose)
+        self.move_to_joint(pose)
 
 
     def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0) -> 'tuple[list[float]]':
