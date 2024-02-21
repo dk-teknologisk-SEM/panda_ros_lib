@@ -78,10 +78,8 @@ class PandaArm():
         self.O_T_EE = msg.O_T_EE
 
     def get_base_rotation(self):
-        arr = np.array(self.O_T_EE)
-        reshaped_arr = arr.reshape(4,4)
-        rotation = reshaped_arr[:3,:3]
-        return tf.transformations.euler_from_matrix(rotation)
+        current_pose = self.get_current_pose()
+        return tf.transformations.euler_from_quaternion([current_pose.orientation.x, current_pose.orientation.y, current_pose.orientation.z, current_pose.orientation.w])
 
     def set_force_torque_collision_behavior(self, lower_torque, upper_torque, lower_force, upper_force):
         rospy.wait_for_service('/franka_control/set_force_torque_collision_behavior')
@@ -148,13 +146,13 @@ class PandaArm():
         pose_feature = self.transformation_matrix_to_pose(T_feature)
         return pose_feature
 
-
     def align_to_base(self, x=True, y=True, z=False):
         rprint("Aligning to base")
-        current_roatation_from_base = self.get_base_rotation()
-        rprint(f"Current rotation from base: {current_roatation_from_base}")
-        self.rotate(-(np.pi-current_roatation_from_base[0]) if x else 0, -(current_roatation_from_base[1]) if y else 0, -(current_roatation_from_base[2]) if z else 0)
-    
+        current_pose = self.get_current_pose()
+        current_pose.orientation = Quaternion(x=1.0, y=0.0, z=0.0, w=0.0)
+        self.move_to_cartesian(current_pose)
+        return
+  
     def move_to_neutral(self):
         # neutral_pose:
         #     panda_joint1: -0.017792060227770554
