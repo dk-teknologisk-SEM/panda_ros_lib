@@ -1,6 +1,6 @@
 import moveit_commander
 import rospy
-from geometry_msgs.msg import WrenchStamped, Pose, Quaternion
+from geometry_msgs.msg import WrenchStamped, Pose, Point, Quaternion
 from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
 from franka_msgs.srv import SetForceTorqueCollisionBehavior
 from time import sleep
@@ -49,6 +49,7 @@ class PandaArm():
         self.speed = 0.15
         self.set_speed(self.speed)
 
+        self.T_feature_to_robot = None
         self.O_T_EE = None
         self.force = None
         self.torque = None
@@ -63,6 +64,7 @@ class PandaArm():
         self.set_force_torque_collision_behavior(self.lower_torque, self.upper_torque, self.lower_force, self.upper_force)
         
         self.clear_error()
+        self.calc_T_feature_to_robot()
 
 
     def _force_callback(self, msg: WrenchStamped):
@@ -97,6 +99,55 @@ class PandaArm():
         msg = ErrorRecoveryActionGoal()
         self.error_publisher.publish(msg)
         sleep(3)
+
+
+    def pose_to_transformation_matrix(self, pose:Pose):
+        position = np.array([pose.position.x, pose.position.y, pose.position.z])
+        orientation = np.array([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
+        R = tf.transformations.quaternion_matrix(orientation)[:3,:3]
+        p = position
+        return np.vstack([np.hstack([R, p.reshape(-1,1)]), [0,0,0,1]])
+
+    
+    def transformation_matrix_to_pose(self, T):
+        position = T[:3,3]
+        orientation = tf.transformations.quaternion_from_matrix(T)
+        return Pose(position=Point(*position), orientation=Quaternion(*orientation))
+    
+    def calc_T_feature_to_robot(self):
+        # position: 
+        #     x: 0.30007501736671166
+        #     y: -0.32942468679149256
+        #     z: 0.033008503169104954
+        # orientation: 
+        #     x: 0.9999454642899159
+        #     y: -0.006590844663065765
+        #     z: 0.00651820481390819
+        #     w: 0.004810635992851003
+        pose_wrt_robot = Pose(position=Point(x=0.30007501736671166, y=-0.32942468679149256, z=0.033008503169104954), orientation=Quaternion(x=0.9999454642899159, y=-0.006590844663065765, z=0.00651820481390819, w=0.004810635992851003))
+        pose_wrt_feature = Pose(position=Point(x=0.0, y=0.0, z=0.0), orientation=Quaternion(x=1.0, y=0.0, z=0.0, w=0.0))
+
+        T_robot = self.pose_to_transformation_matrix(pose_wrt_robot)
+        T_feature = self.pose_to_transformation_matrix(pose_wrt_feature)
+        
+        # T_FR = T_R @ inv(T_F)
+        self.T_feature_to_robot = T_robot @ np.linalg.inv(T_feature)
+    
+
+    def pose_robot_from_pose_feature(self, pose_feature:Pose):
+        T_feature = self.pose_to_transformation_matrix(pose_feature)
+        # T_R = T_FR @ T_F
+        T_robot = self.T_feature_to_robot @ T_feature
+        pose_robot = self.transformation_matrix_to_pose(T_robot)
+        return pose_robot
+    
+    def pose_feature_from_pose_robot(self, pose_robot:Pose):
+        T_robot = self.pose_to_transformation_matrix(pose_robot)
+        # T_F = inv(T_FR) @ T_R
+        T_feature = np.linalg.inv(self.T_feature_to_robot) @ T_robot
+        pose_feature = self.transformation_matrix_to_pose(T_feature)
+        return pose_feature
+
 
     def align_to_base(self, x=True, y=True, z=False):
         rprint("Aligning to base")
@@ -135,13 +186,15 @@ class PandaArm():
     def get_speed(self)->'float':
         return self.speed
         
-    def move_to_joint(self, pose, wait=True):
-        self.move_group.set_pose_target(pose, end_effector_link="panda_hand_tcp")
+    def move_to_joint(self, pose_feature, wait=True):
+        pose_robot = self.pose_robot_from_pose_feature(pose_feature)
+        self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
         self.move_group.go(wait=wait)
 
 
-    def move_to_cartesian(self, pose, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
-        plan, fraction = self.move_group.compute_cartesian_path([pose], 0.01, 0.0)
+    def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
+        pose_robot = self.pose_robot_from_pose_feature(pose_feature)
+        plan, fraction = self.move_group.compute_cartesian_path([*pose_robot] if isinstance(pose_robot,list) else [pose_robot], 0.01, 0.0)
 
         if not skip_parameterzation:
             #set cartesian speed using time parameterization
@@ -153,7 +206,9 @@ class PandaArm():
         return plan
 
     def get_current_pose(self)->'Pose':
-        return self.move_group.get_current_pose().pose
+        pose_robot = self.move_group.get_current_pose().pose
+        return self.pose_feature_from_pose_robot(pose_robot)
+
 
     def contact(self):
         self.move_to_contact()
