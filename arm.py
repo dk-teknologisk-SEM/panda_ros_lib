@@ -40,7 +40,7 @@ class PandaArm():
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
 
-        
+        self.clear_error()        
         self.gripper = GripperInterface()
         self.gripper.open()
         self.gripper.calibrate()
