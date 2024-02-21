@@ -7,6 +7,7 @@ from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
 import numpy as np
+from controller_manager_msgs.srv import SwitchController, ListControllers
 from iterativeTimeParameterization import IterativeParabolicTimeParameterization
 
 DEBUG = True
@@ -57,15 +58,18 @@ class PandaArm():
         self.contact_state = []
         self.collision_state = []
 
+        self.stop_controller("position_joint_trajectory_controller")
+
         self.lower_force = [5.0, 5.0, 5.0, 6.0, 6.0, 6.0]
         self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0]
         self.lower_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
-        self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]  
+        self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.set_force_torque_collision_behavior(self.lower_torque, self.upper_torque, self.lower_force, self.upper_force)
         
+        self.start_controller("position_joint_trajectory_controller")
+
         self.clear_error()
         self.calc_T_feature_to_robot()
-
 
     def _force_callback(self, msg: WrenchStamped):
         self.force = msg.wrench.force
@@ -90,6 +94,35 @@ class PandaArm():
             resp = set_force_torque_collision_behavior(lower_torque, upper_torque, lower_force, upper_force)
             rospy.loginfo("Setting force torque collision behavior 3")
             return resp.success
+        except rospy.ServiceException as e:
+            rprint("Service call failed: %s"%e)
+
+    def get_controllers(self):
+        rospy.wait_for_service('/controller_manager/list_controllers')
+        try:
+            list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers', ListControllers)
+            resp = list_controllers()
+            return resp.controller
+        except rospy.ServiceException as e:
+            rprint("Service call failed: %s"%e)
+
+    def stop_controller(self, controller_name):
+        rprint("Stopping controller")
+        rospy.wait_for_service('/controller_manager/switch_controller')
+        try:
+            switch_controller = rospy.ServiceProxy('/controller_manager/switch_controller', SwitchController)
+            resp = switch_controller(start_controllers=[], stop_controllers=[controller_name], strictness=1, start_asap=False, timeout=0.0)
+            return resp.ok
+        except rospy.ServiceException as e:
+            rprint("Service call failed: %s"%e)
+
+    def start_controller(self, controller_name):
+        rprint("Starting controller")
+        rospy.wait_for_service('/controller_manager/switch_controller')
+        try:
+            switch_controller = rospy.ServiceProxy('/controller_manager/switch_controller', SwitchController)
+            resp = switch_controller(start_controllers=[controller_name], stop_controllers=[], strictness=1, start_asap=False, timeout=0.0)
+            return resp.ok
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
 
