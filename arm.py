@@ -20,7 +20,6 @@ def eulerToQuaternion(current_orientation:Quaternion, x, y, z):
 
     quaternion=tf.transformations.quaternion_multiply(q2,[current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
 
-    # quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
     ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
 
     return ori
@@ -30,7 +29,6 @@ def quaternionToEuler(quaternion: Quaternion):
     
     return euler
 
-  
 class PandaArm():
     def __init__(self):
         moveit_commander.roscpp_initialize("")
@@ -164,7 +162,6 @@ class PandaArm():
         # T_FR = T_R @ inv(T_F)
         self.T_feature_to_robot = T_robot @ np.linalg.inv(T_feature)
     
-
     def pose_robot_from_pose_feature(self, pose_feature:Pose):
         T_feature = self.pose_to_transformation_matrix(pose_feature)
         # T_R = T_FR @ T_F
@@ -222,7 +219,6 @@ class PandaArm():
         self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
         self.move_group.go(wait=wait)
 
-
     def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
         pose_robot = self.pose_robot_from_pose_feature(pose_feature)
         plan, fraction = self.move_group.compute_cartesian_path([*pose_robot] if isinstance(pose_robot,list) else [pose_robot], 0.01, 0.0)
@@ -240,20 +236,17 @@ class PandaArm():
         pose_robot = self.move_group.get_current_pose().pose
         return self.pose_feature_from_pose_robot(pose_robot)
 
-
     def contact(self):
         self.move_to_contact()
 
     def move(self, pose):   
         self.move_to_joint(pose)
 
-
     def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0) -> 'tuple[list[float]]':
 
         if not target_pose:
             target_pose = self.get_current_pose()
             target_pose.position.z -= search_distance
-
 
         current_speed = self.speed
         slow_speed = 0.02
@@ -266,7 +259,6 @@ class PandaArm():
         current_contact_state = self.contact_state
 
         while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
-            # rprint(self.force.z)
             current_contact_state = self.contact_state
             sleep(0.01)
         
@@ -280,7 +272,6 @@ class PandaArm():
         self.set_speed(current_speed)
 
         return end_state
-        # rprint("after ", self.speed) 
 
     def relative_move(self, axis:int, distance: float):
         if axis not in [0,1,2]:
