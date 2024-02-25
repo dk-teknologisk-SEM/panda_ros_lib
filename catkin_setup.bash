@@ -6,7 +6,7 @@ curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo ap
 sudo apt update
 sudo apt install -y ros-noetic-desktop-full
 echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
-#The rest
+#libfranka
 mkdir ~/robosapiens && cd ~/robosapiens
 sudo apt install -y build-essential cmake git libpoco-dev libeigen3-dev
 git clone --recursive https://github.com/frankaemika/libfranka && cd libfranka
@@ -15,14 +15,17 @@ mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF ..
 cmake --build .
 cpack -G DEB && sudo dpkg -i libfranka*.deb
+#franka_ros
 cd ~/robosapiens
 mkdir -p catkin_ws/src && cd catkin_ws
-catkin init src
+sudo apt install ros-noetic-catkin python3-catkin-tools
+catkin init
 git clone --recursive https://github.com/frankaemika/franka_ros src/franka_ros && cd src/franka_ros
 git checkout 0.8.0
 sed -i "s/_arm.urdf.xacro/\/panda.urdf.xacro arm_id:='panda'/g" ~/robosapiens/catkin_ws/src/franka_ros/franka_control/launch/franka_control.launch
+#moveit
 cd ~/robosapiens/catkin_ws/src
-sudo apt update && sudo apt dist-upgrade
+sudo apt update && sudo apt dist-upgrade -y
 sudo apt install -y ros-noetic-catkin python3-catkin-tools python3-wstool python3-rosdep
 sudo rosdep init
 rosdep update
@@ -31,6 +34,7 @@ wstool merge -t . https://raw.githubusercontent.com/ros-planning/moveit/master/m
 wstool remove moveit_tutorials
 wstool update -t .
 #git clone https://github.com/ros-planning/panda_moveit_config.git -b noetic-devel
+#configure and build
 cd ~/robosapiens/catkin_ws
 rosdep install -y --from-paths src --ignore-src --rosdistro noetic --skip-keys libfranka
 sudo apt install ros-noetic-desktop-full
