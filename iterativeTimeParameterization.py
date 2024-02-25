@@ -33,12 +33,11 @@ class IterativeParabolicTimeParameterization:
             next_point:JointTrajectoryPoint = plan.joint_trajectory.points[i+1]
             
             vars = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7'] # arm.move_group.get_current_state().joint_state.name
+            max_velocitys = [2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61]
             
             joint_limits_base = "/robot_description_planning/joint_limits/"
             for idx, v in enumerate(vars):
-                v_max = 1.0
-                if rospy.get_param(f'{joint_limits_base}{v}/has_velocity_limits'):
-                    v_max = abs(rospy.get_param(f'{joint_limits_base}{v}/max_velocity') * speed)
+                v_max = max_velocitys[idx] * speed
                 
                 dq1 = current_point.positions[idx]
                 dq2 = next_point.positions[idx]
@@ -82,7 +81,8 @@ class IterativeParabolicTimeParameterization:
         backwards = False
         num_points = len(plan.joint_trajectory.points)
         vars = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7'] # arm.move_group.get_current_state().joint_state.name
-
+        max_accelerations = [3.75, 1.875, 2.5, 3.125, 3.75, 5, 5]
+        
         joint_limits_base = "/robot_description_planning/joint_limits/"
 
         while True:
@@ -101,9 +101,7 @@ class IterativeParabolicTimeParameterization:
                         if index < num_points-1:
                             next_point: JointTrajectoryPoint = plan.joint_trajectory.points[index+1]
                         
-                        a_max = 1.0
-                        if rospy.get_param(f'{joint_limits_base}{v}/has_acceleration_limits'):
-                            a_max = abs(rospy.get_param(f'{joint_limits_base}{v}/max_acceleration') * speed)
+                        a_max = max_accelerations[idx] * speed
 
                         if index == 0:
                             q1 = next_point.positions[idx]
