@@ -233,7 +233,7 @@ class PandaArm():
     def move(self, pose):   
         self.move_to_joint(pose)
 
-    def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0) -> 'tuple[list[float]]':
+    def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0, only_in_axis=None) -> 'tuple[list[float]]':
 
         if not target_pose:
             target_pose = self.get_current_pose()
@@ -249,16 +249,19 @@ class PandaArm():
 
         current_contact_state = self.contact_state
 
-        while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
-            current_contact_state = self.contact_state
-            sleep(0.01)
+        if only_in_axis is not None:
+            while (current_contact_state[only_in_axis] == 0.0) and (rospy.get_time() - start_time < timeout):
+                current_contact_state = self.contact_state
+                sleep(0.01)
+        else:
+            while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
+                current_contact_state = self.contact_state
+                sleep(0.01)
         
         end_state = (self.contact_state, self.collision_state)
 
-        rprint(f"Before: Contact {self.contact_state}, Collision {self.collision_state}")
         self.move_group.stop()
         sleep(time)
-        rprint(f"After: Contact {self.contact_state}, Collision {self.collision_state}")
 
         self.set_speed(current_speed)
 
