@@ -164,11 +164,9 @@ class PandaArm():
         return pose_feature
 
     def align_to_base(self, x=True, y=True, z=False):
-        rprint("Aligning to base")
-        current_pose = self.get_current_pose()
-        current_pose.orientation = Quaternion(x=1.0, y=0.0, z=0.0, w=0.0)
-        self.move_to_cartesian(current_pose)
-        return
+        current_rotation_from_base = self.get_base_rotation()
+        self.rotate_abs(np.pi if x else current_rotation_from_base[0], 0 if y else current_rotation_from_base[1], 0 if z else current_rotation_from_base[2])
+        
   
     def move_to_neutral(self):
         # neutral_pose:
@@ -275,22 +273,34 @@ class PandaArm():
 
         return self.move_to_cartesian(pose)
 
-    def rotate(self, x, y, z, move=True):
+    def rotate(self, x, y, z, move=True, direction=True):
         q_r=tf.transformations.quaternion_from_euler(x,y,z)
         
         current_orientation = self.get_current_pose().orientation
-        current_orientation_euler = tf.transformations.euler_from_quaternion([current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
+
+        if direction:
+            quaternion=tf.transformations.quaternion_multiply(q_r,[current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
+        else:
+            q_r = tf.transformations.quaternion_conjugate(q_r)
+            quaternion=tf.transformations.quaternion_multiply(q_r, [current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
+            
+        ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
+
+        if move:
+            target_orientation = self.get_current_pose()
+            target_orientation.orientation = ori
+            self.move_to_cartesian(target_orientation)
         
-        target_euler = [current_orientation_euler[0]+x, current_orientation_euler[1]+y, current_orientation_euler[2]+z]
-
-        target_quaternion = tf.transformations.quaternion_from_euler(*target_euler)
-
+        return ori
+    
+    def rotate_abs(self, x, y, z, move=True):        
+        target_quaternion = tf.transformations.quaternion_from_euler(x,y,z)
         ori = Quaternion(x=target_quaternion[0], y=target_quaternion[1], z=target_quaternion[2], w=target_quaternion[3])
 
         if move:
             target_orientation = self.get_current_pose()
             target_orientation.orientation = ori
-            self.move_to_cartesian(target_orientation, skip_parameterzation=True)
+            self.move_to_cartesian(target_orientation)
         
         return ori
 
