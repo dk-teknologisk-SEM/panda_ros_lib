@@ -45,7 +45,7 @@ class PandaArm():
 
         self.stop_controller("position_joint_trajectory_controller")
 
-        self.lower_force = [5.0, 5.0, 5.0, 6.0, 6.0, 6.0]
+        self.lower_force = [10.0, 10.0, 10.0, 13.0, 13.0, 13.0]
         self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0]
         self.lower_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
