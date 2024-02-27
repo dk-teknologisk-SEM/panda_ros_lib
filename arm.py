@@ -205,8 +205,14 @@ class PandaArm():
         self.move_group.go(wait=wait)
 
     def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
-        pose_robot = self.pose_robot_from_pose_feature(pose_feature)
-        plan, fraction = self.move_group.compute_cartesian_path([*pose_robot] if isinstance(pose_robot,list) else [pose_robot], 0.01, 0.0)
+        if isinstance(pose_feature, list):
+            updateted_pose_feature = []
+            for pose in pose_feature:
+                updateted_pose_feature.append(self.pose_robot_from_pose_feature(pose))
+        else:
+            updateted_pose_feature = self.pose_robot_from_pose_feature(pose_feature)
+    
+        plan, fraction = self.move_group.compute_cartesian_path([*updateted_pose_feature] if isinstance(updateted_pose_feature,list) else [updateted_pose_feature], 0.01, 0.0)
 
         if not skip_parameterzation:
             #set cartesian speed using time parameterization
