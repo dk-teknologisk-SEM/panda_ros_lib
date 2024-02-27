@@ -15,19 +15,6 @@ def rprint(msg):
     if DEBUG:
         rospy.loginfo(msg)
 
-def eulerToQuaternion(current_orientation:Quaternion, x, y, z):
-    q2=tf.transformations.quaternion_from_euler(x,y,z)
-
-    quaternion=tf.transformations.quaternion_multiply(q2,[current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
-
-    ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
-
-    return ori
-
-def quaternionToEuler(quaternion: Quaternion):
-    euler = tf.transformations.euler_from_quaternion([quaternion.x, quaternion.y, quaternion.z, quaternion.w] )
-    
-    return euler
 
 class PandaArm():
     def __init__(self):
