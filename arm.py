@@ -295,22 +295,24 @@ class PandaArm():
             
         ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
 
-        if move:
-            target_orientation = self.get_current_pose()
-            target_orientation.orientation = ori
-            self.move_to_cartesian(target_orientation)
+        target_pose = self.get_current_pose()
+        target_pose.orientation = ori
+
+        if move:   
+            self.move_to_cartesian(target_pose)
         
-        return ori
+        return target_pose
     
     def rotate_abs(self, x, y, z, move=True):        
         target_quaternion = tf.transformations.quaternion_from_euler(x,y,z)
         ori = Quaternion(x=target_quaternion[0], y=target_quaternion[1], z=target_quaternion[2], w=target_quaternion[3])
 
+        target_pose = self.get_current_pose()
+        target_pose.orientation = ori
+    
         if move:
-            target_orientation = self.get_current_pose()
-            target_orientation.orientation = ori
-            self.move_to_cartesian(target_orientation)
+            self.move_to_cartesian(target_pose)
         
-        return ori
+        return target_pose
 
 
