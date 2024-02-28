@@ -3,6 +3,7 @@ import rospy
 from geometry_msgs.msg import WrenchStamped, Pose, Point, Quaternion
 from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
 from franka_msgs.srv import SetForceTorqueCollisionBehavior
+from moveit_msgs.msg import Constraints, JointConstraint
 from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
@@ -26,6 +27,8 @@ class PandaArm():
         self.error_publisher = rospy.Publisher("/franka_control/error_recovery/goal", ErrorRecoveryActionGoal,queue_size=10)
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
+
+        self.constraints = self._get_constraints()
 
         self.clear_error()        
         self.gripper = GripperInterface()
@@ -59,6 +62,42 @@ class PandaArm():
     def _force_callback(self, msg: WrenchStamped):
         self.force = msg.wrench.force
         self.torque = msg.wrench.torque
+
+    def _get_constraints(self):
+        constraints = Constraints()
+        constraints.name = "panda_arm"
+        # lower:     -2.8973
+        # upper:      2.8973
+
+        # lower:     -1.7628
+        # upper:      1.7628
+
+        # lower:     -2.8973
+        # upper:      2.8973
+        
+        # lower:     -3.0718
+        # upper:     -0.0698
+
+        # lower:     -2.8973
+        # upper:      2.8973
+
+        # lower:     -0.0175
+        # upper:      3.7525
+
+        # lower:     -2.8973
+        # upper:      2.8973
+
+        joint_constraints = []
+        joint_constraints.append(JointConstraint(joint_name="panda_joint1", position=0, tolerance_above=2.8973*0.9, tolerance_below=2.8973*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint2", position=0, tolerance_above=1.7628*0.9, tolerance_below=1.7628*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint3", position=0, tolerance_above=2.8973*0.9, tolerance_below=2.8973*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint4", position=0, tolerance_above=0.0*0.9, tolerance_below=3.0718*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint5", position=0, tolerance_above=2.8973*0.9, tolerance_below=2.8973*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint6", position=0, tolerance_above=3.7525*0.9, tolerance_below=0.0175*0.9, weight=1))
+        joint_constraints.append(JointConstraint(joint_name="panda_joint7", position=0, tolerance_above=2.8973*0.9, tolerance_below=2.8973*0.9, weight=1))
+
+        constraints.joint_constraints = joint_constraints
+        return constraints
 
     def _franka_state_callback(self, msg: FrankaState):
         self.state = msg
@@ -212,7 +251,8 @@ class PandaArm():
         else:
             updateted_pose_feature = self.pose_robot_from_pose_feature(pose_feature)
     
-        plan, fraction = self.move_group.compute_cartesian_path([*updateted_pose_feature] if isinstance(updateted_pose_feature,list) else [updateted_pose_feature], 0.01, 0.0)
+        plan, fraction = self.move_group.compute_cartesian_path([*updated_pose_feature] if isinstance(updated_pose_feature,list) else [updated_pose_feature], 0.01, 0.0) #, path_constraints = self.constraints)
+        
 
         if not skip_parameterzation:
             #set cartesian speed using time parameterization
