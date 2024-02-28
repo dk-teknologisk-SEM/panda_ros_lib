@@ -243,13 +243,76 @@ class PandaArm():
         self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
         self.move_group.go(wait=wait)
 
-    def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
-        if isinstance(pose_feature, list):
-            updateted_pose_feature = []
-            for pose in pose_feature:
-                updateted_pose_feature.append(self.pose_robot_from_pose_feature(pose))
+    def is_orientation_difference_pi(self, ori1, ori2):
+        quaternion=tf.transformations.quaternion_multiply([ori1.x, ori1.y, ori1.z, ori1.w], [ori2.x, ori2.y, ori2.z, ori2.w])
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+        # rprint(euler)
+        #Return which axis angle is equal to pi if any, othrwise return None
+        for idx, angle in enumerate(euler):
+            if (np.pi - abs(angle)) < 0.0001:
+                return idx, angle, quaternion
+          
+        return None
+    
+    def split_pose_into_two(self, pose:Pose, prev_pose:Pose, orientation_difference)->'list[Pose]':
+        new_poses = []
+        rprint('hej')
+        rprint(orientation_difference)
+        if orientation_difference[0] == 0:
+            new_pose1_ori = self.rotate(orientation_difference[1]/2,0,0,move=False, origin_pose=prev_pose).orientation
+            new_pose1 = Pose(position=pose.position, orientation=new_pose1_ori)
+            new_pose2_ori = self.rotate(orientation_difference[1]/2,0,0,move=False, origin_pose=new_pose1).orientation
+            new_pose2 = Pose(position=pose.position, orientation=new_pose2_ori)
+            new_poses.append(new_pose1)
+            new_poses.append(new_pose2)
+        elif orientation_difference[0] == 1:
+            new_pose1_ori = self.rotate(0,orientation_difference[1]/2,0,move=False, origin_pose=prev_pose).orientation
+            new_pose1 = Pose(position=pose.position, orientation=new_pose1_ori)
+            new_pose2_ori = self.rotate(0,orientation_difference[1]/2,0,move=False, origin_pose=new_pose1).orientation
+            new_pose2 = Pose(position=pose.position, orientation=new_pose2_ori)
+            new_poses.append(new_pose1)
+            new_poses.append(new_pose2)
+        elif orientation_difference[0] == 2:
+            new_pose1_ori = self.rotate(0,0,orientation_difference[1]/2,move=False, origin_pose=prev_pose).orientation
+            new_pose1 = Pose(position=pose.position, orientation=new_pose1_ori)
+            new_pose2_ori = self.rotate(0,0,orientation_difference[1]/2,move=False, origin_pose=new_pose1).orientation
+            new_pose2 = Pose(position=pose.position, orientation=new_pose2_ori)
+            new_poses.append(new_pose1)
+            new_poses.append(new_pose2)
+        
+        return new_poses
+
+    def _make_pose_useable_for_move_to_cartesian(self, pose):
+        updated_pose = []
+        prev_pose = self.get_current_pose()
+        if isinstance(pose, list):
+            for p in pose:
+                orientation_difference = self.is_orientation_difference_pi(p.orientation, prev_pose.orientation)
+                if orientation_difference is not None:
+                    new_poses = self.split_pose_into_two(p, prev_pose, orientation_difference)
+                    for new_pose in new_poses:
+                        updated_pose.append(self.pose_robot_from_pose_feature(new_pose))
+                    
+                else:
+                    updated_pose.append(self.pose_robot_from_pose_feature(p))
+                prev_pose = p
         else:
-            updateted_pose_feature = self.pose_robot_from_pose_feature(pose_feature)
+            orientation_difference = self.is_orientation_difference_pi(pose.orientation, prev_pose.orientation)
+            if orientation_difference is not None:
+                new_poses = self.split_pose_into_two(pose, prev_pose, orientation_difference)
+                for new_pose in new_poses:
+                    updated_pose.append(self.pose_robot_from_pose_feature(new_pose))
+        
+        if len(updated_pose) == 0:
+            return self.pose_robot_from_pose_feature(pose)
+        return updated_pose
+                   
+
+    def move_to_cartesian(self, pose_feature, wait=True, speed=None, iterations=100, skip_parameterzation=False):
+        if speed is None:
+            speed = self.speed
+
+        updated_pose_feature = self._make_pose_useable_for_move_to_cartesian(pose_feature)
     
         plan, fraction = self.move_group.compute_cartesian_path([*updated_pose_feature] if isinstance(updated_pose_feature,list) else [updated_pose_feature], 0.01, 0.0) #, path_constraints = self.constraints)
         
@@ -322,10 +385,13 @@ class PandaArm():
 
         return self.move_to_cartesian(pose)
 
-    def rotate(self, x, y, z, move=True, direction=True):
+    def rotate(self, x, y, z, move=True, direction=True, origin_pose=None):
         q_r=tf.transformations.quaternion_from_euler(x,y,z)
         
-        current_orientation = self.get_current_pose().orientation
+        if origin_pose == None:
+            current_orientation = self.get_current_pose().orientation
+        else:
+            current_orientation = origin_pose.orientation
 
         if direction:
             quaternion=tf.transformations.quaternion_multiply(q_r,[current_orientation.x, current_orientation.y, current_orientation.z, current_orientation.w])
@@ -335,12 +401,13 @@ class PandaArm():
             
         ori = Quaternion(x=quaternion[0], y=quaternion[1], z=quaternion[2], w=quaternion[3])
 
-        if move:
-            target_orientation = self.get_current_pose()
-            target_orientation.orientation = ori
-            self.move_to_cartesian(target_orientation)
+        target_pose = self.get_current_pose()
+        target_pose.orientation = ori
+
+        if move:    
+            self.move_to_cartesian(target_pose)
         
-        return ori
+        return target_pose
     
     def rotate_abs(self, x, y, z, move=True):        
         target_quaternion = tf.transformations.quaternion_from_euler(x,y,z)
