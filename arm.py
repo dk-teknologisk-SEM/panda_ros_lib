@@ -300,7 +300,7 @@ class PandaArm():
         self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
         self.move_group.go(wait=wait)
 
-    def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False):
+    def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False, execute=True):
         if isinstance(pose_feature, list):
             updateted_pose_feature = []
             for pose in pose_feature:
@@ -315,9 +315,16 @@ class PandaArm():
             iptp = IterativeParabolicTimeParameterization()
             plan = iptp.compute_time_stamps(plan, speed, iteration_max=iterations)
 
-        self.move_group.execute(plan, wait=wait)
-        
-        return plan
+        if execute:
+            #create switch for controller name
+            if self.controller_name == "position_joint_trajectory_controller":
+                self.move_group.execute(plan, wait=wait)
+            elif self.controller_name == "CartesianImpedance_trajectory_controller":
+                self.set_impedance_controller_trajectory(plan.joint_trajectory)
+            else:
+                rprint("Unknown controller name")
+        else:
+            return plan
 
     def get_current_pose(self)->'Pose':
         pose_robot = self.move_group.get_current_pose().pose
