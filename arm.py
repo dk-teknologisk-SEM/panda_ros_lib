@@ -1,8 +1,11 @@
 import moveit_commander
 import rospy
-from geometry_msgs.msg import WrenchStamped, Pose, Point, Quaternion
+from geometry_msgs.msg import Wrench, WrenchStamped, Pose, Point, Quaternion
 from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
 from franka_msgs.srv import SetForceTorqueCollisionBehavior
+from control_msgs.msg import FollowJointTrajectoryActionGoal
+from cartesian_impedance_controller.msg import ControllerConfig
+
 from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
@@ -24,6 +27,9 @@ class PandaArm():
         self.move_group.set_end_effector_link("panda_hand_tcp")
 
         self.error_publisher = rospy.Publisher("/franka_control/error_recovery/goal", ErrorRecoveryActionGoal,queue_size=10)
+        self.impedance_controller_settings_publisher = rospy.Publisher("/CartesianImpedance_trajectory_controller/set_config", ControllerConfig, queue_size=50)
+        self.impedance_controller_wrench_publisher = rospy.Publisher("/CartesianImpedance_trajectory_controller/set_cartesian_wrench", WrenchStamped, queue_size=10)
+        self.trajectory_publisher = rospy.Publisher("/CartesianImpedance_trajectory_controller/follow_joint_trajectory/goal", FollowJointTrajectoryActionGoal,queue_size=10)
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
 
@@ -110,6 +116,71 @@ class PandaArm():
             return resp.ok
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
+
+    def set_impedance_controller_trajectory(self, trajectory):
+        msg = FollowJointTrajectoryActionGoal()
+        msg.goal.trajectory = trajectory
+        self.trajectory_publisher.publish(msg)
+
+    def set_impedance_controller_settings(self, stiffness, damping):
+        msg = ControllerConfig()
+        cart_stiffness = Wrench()
+        cart_stiffness.force.x = stiffness[0]
+        cart_stiffness.force.y = stiffness[1]
+        cart_stiffness.force.z = stiffness[2]
+        cart_stiffness.torque.x = stiffness[3]
+        cart_stiffness.torque.y = stiffness[4]
+        cart_stiffness.torque.z = stiffness[5]
+        
+        cart_damping = Wrench()
+        cart_damping.force.x = damping[0]
+        cart_damping.force.y = damping[1]
+        cart_damping.force.z = damping[2]
+        cart_damping.torque.x = damping[3]
+        cart_damping.torque.y = damping[4]
+        cart_damping.torque.z = damping[5]
+
+        msg.cartesian_stiffness = cart_stiffness
+        msg.cartesian_damping_factors = cart_damping
+        msg.nullspace_stiffness = 30.0
+        msg.nullspace_damping_factor = 1.0
+        # msg.q_d_nullspace = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.impedance_controller_settings_publisher.publish(msg)
+
+    def set_cartestion_impedance_wrench(self, force, torque):
+        msg = WrenchStamped()
+        msg.wrench.force.x = force[0]
+        msg.wrench.force.y = force[1]
+        msg.wrench.force.z = force[2]
+        msg.wrench.torque.x = torque[0]
+        msg.wrench.torque.y = torque[1]
+        msg.wrench.torque.z = torque[2]
+        self.impedance_controller_wrench_publisher.publish(msg)
+    
+    def start_cartestion_impedance_controller(self):
+        ok_stop = self.stop_controller("position_joint_trajectory_controller")
+        if ok_stop:
+            ok_start = self.start_controller("CartesianImpedance_trajectory_controller")
+            if ok_start:
+                self.set_impedance_controller_settings([1000,1000,1000,10,10,10], [1.0,1.0,1.0,1.0,1.0,1.0])
+                rprint("done setting")
+            else:
+                rprint("Could not start CartesianImpedance_trajectory_controller")
+        else:
+            rprint("Could not stop position_joint_trajectory_controller")
+
+    def stop_cartestion_impedance_controller(self):
+       
+        ok_stop = self.stop_controller("CartesianImpedance_trajectory_controller")
+        if ok_stop:
+            ok_start = self.start_controller("position_joint_trajectory_controller")
+            if ok_start:
+                rprint("Started position_joint_trajectory_controller")
+            else:
+                rprint("Could not start CartesianImpedance_trajectory_controller")
+        else:
+            rprint("Could not stop position_joint_trajectory_controller")
+
 
     def clear_error(self):
         msg = ErrorRecoveryActionGoal()
