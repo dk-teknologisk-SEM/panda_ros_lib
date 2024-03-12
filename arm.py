@@ -32,7 +32,10 @@ class PandaArm():
         self.trajectory_publisher = rospy.Publisher("/CartesianImpedance_trajectory_controller/follow_joint_trajectory/goal", FollowJointTrajectoryActionGoal,queue_size=10)
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
-
+                
+        self.start_default_controller()
+        self.controller_name = "position_joint_trajectory_controller"
+        
         self.clear_error()        
         self.gripper = GripperInterface()
         self.gripper.open()
@@ -49,7 +52,7 @@ class PandaArm():
         self.contact_state = []
         self.collision_state = []
 
-        self.stop_controller("position_joint_trajectory_controller")
+        self.stop_controller(self.controller_name)
 
         self.lower_force = [10.0, 10.0, 10.0, 13.0, 13.0, 13.0]
         self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0]
@@ -57,7 +60,7 @@ class PandaArm():
         self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.set_force_torque_collision_behavior(self.lower_torque, self.upper_torque, self.lower_force, self.upper_force)
         
-        self.start_controller("position_joint_trajectory_controller")
+        self.start_controller(self.controller_name)
 
         self.clear_error()
         self.calc_T_feature_to_robot()
@@ -88,21 +91,40 @@ class PandaArm():
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
 
-    def get_controllers(self):
+    def get_active_controller(self):
+        controllers = self.get_controllers()
+        for controller in controllers.controller:
+            if controller.state == "running" and controller.name not in ["franka_state_controller", "gripper_controller"]:
+                return controller.name
+
+    def start_default_controller(self):
+        controller_name = self.get_active_controller()
+        if controller_name == "position_joint_trajectory_controller" :
+            return 
+        
+        rprint("Current controller: " + str(controller_name))
+        rprint("Switching to position_joint_trajectory_controller")
+            
+        self.stop_controller(controller_name)
+        self.start_controller("position_joint_trajectory_controller")
+
+    def get_controllers(self)->'ListControllers':
         rospy.wait_for_service('/controller_manager/list_controllers')
         try:
             list_controllers = rospy.ServiceProxy('/controller_manager/list_controllers', ListControllers)
             resp = list_controllers()
-            return resp.controller
+            return resp
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
 
     def stop_controller(self, controller_name):
         rprint("Stopping controller")
+        if type(controller_name) == str:
+            controller_name = [controller_name]
         rospy.wait_for_service('/controller_manager/switch_controller')
         try:
             switch_controller = rospy.ServiceProxy('/controller_manager/switch_controller', SwitchController)
-            resp = switch_controller(start_controllers=[], stop_controllers=[controller_name], strictness=1, start_asap=False, timeout=0.0)
+            resp = switch_controller(start_controllers=[], stop_controllers=controller_name, strictness=1, start_asap=False, timeout=0.0)
             return resp.ok
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
@@ -113,6 +135,7 @@ class PandaArm():
         try:
             switch_controller = rospy.ServiceProxy('/controller_manager/switch_controller', SwitchController)
             resp = switch_controller(start_controllers=[controller_name], stop_controllers=[], strictness=1, start_asap=False, timeout=0.0)
+            self.controller_name = controller_name
             return resp.ok
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
