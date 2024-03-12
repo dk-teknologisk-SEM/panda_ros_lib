@@ -383,7 +383,9 @@ class PandaArm():
         else:
             pose.position.z += distance
 
-        return self.move_to_cartesian(pose)
+        self.move_to_cartesian(pose)
+
+        return pose
 
     def rotate(self, x, y, z, move=True, direction=True):
         q_r=tf.transformations.quaternion_from_euler(x,y,z)
