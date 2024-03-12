@@ -55,7 +55,7 @@ class PandaArm():
         self.stop_controller(self.controller_name)
 
         self.lower_force = [10.0, 10.0, 10.0, 13.0, 13.0, 13.0]
-        self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0]
+        self.upper_force = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0] #[x*2 for x in self.lower_force]
         self.lower_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.upper_torque = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0]
         self.set_force_torque_collision_behavior(self.lower_torque, self.upper_torque, self.lower_force, self.upper_force)
@@ -334,7 +334,7 @@ class PandaArm():
             target_pose.position.z -= search_distance
 
         current_speed = self.speed
-        slow_speed = 0.02
+        slow_speed = 0.015
         self.set_speed(slow_speed)
 
         self.move_to_cartesian(target_pose, wait=False, speed=slow_speed)
