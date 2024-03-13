@@ -180,12 +180,12 @@ class PandaArm():
         msg.wrench.torque.z = torque[2]
         self.impedance_controller_wrench_publisher.publish(msg)
     
-    def start_cartestion_impedance_controller(self):
+    def start_cartestion_impedance_controller(self, stiffness, damping):
         ok_stop = self.stop_controller("position_joint_trajectory_controller")
         if ok_stop:
             ok_start = self.start_controller("CartesianImpedance_trajectory_controller")
             if ok_start:
-                self.set_impedance_controller_settings([1000,1000,1000,10,10,10], [1.0,1.0,1.0,1.0,1.0,1.0])
+                self.set_impedance_controller_settings(stiffness, damping)
                 rprint("done setting")
             else:
                 rprint("Could not start CartesianImpedance_trajectory_controller")
