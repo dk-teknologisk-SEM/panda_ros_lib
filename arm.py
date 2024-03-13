@@ -336,17 +336,16 @@ class PandaArm():
     def move(self, pose):   
         self.move_to_joint(pose)
 
-    def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0, only_in_axis=None) -> 'tuple[list[float]]':
+    def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0, only_in_axis=None, speed=0.015) -> 'tuple[list[float]]':
 
         if not target_pose:
             target_pose = self.get_current_pose()
             target_pose.position.z -= search_distance
 
         current_speed = self.speed
-        slow_speed = 0.015
-        self.set_speed(slow_speed)
+        self.set_speed(speed)
 
-        self.move_to_cartesian(target_pose, wait=False, speed=slow_speed)
+        self.move_to_cartesian(target_pose, wait=False, speed=speed)
 
         start_time = rospy.get_time()
 
