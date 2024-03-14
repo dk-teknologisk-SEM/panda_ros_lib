@@ -10,7 +10,7 @@ from time import sleep
 from .gripper import GripperInterface
 import tf.transformations
 import numpy as np
-from controller_manager_msgs.srv import SwitchController, ListControllers
+from controller_manager_msgs.srv import SwitchController, ListControllers, UnloadController, LoadController
 from iterativeTimeParameterization import IterativeParabolicTimeParameterization
 
 DEBUG = True
@@ -100,12 +100,14 @@ class PandaArm():
     def start_default_controller(self):
         controller_name = self.get_active_controller()
         if controller_name == "position_joint_trajectory_controller" :
+            self.reload_controller(controller_name="CartesianImpedance_trajectory_controller")
             return 
         
         rprint("Current controller: " + str(controller_name))
         rprint("Switching to position_joint_trajectory_controller")
             
         self.stop_controller(controller_name)
+        self.reload_controller(controller_name="CartesianImpedance_trajectory_controller")
         self.start_controller("position_joint_trajectory_controller")
 
     def get_controllers(self)->'ListControllers':
@@ -116,6 +118,30 @@ class PandaArm():
             return resp
         except rospy.ServiceException as e:
             rprint("Service call failed: %s"%e)
+
+    def unload_controller(self, controller_name):
+        rprint("Unloading controller")
+        rospy.wait_for_service('/controller_manager/unload_controller')
+        try:
+            unload_controller = rospy.ServiceProxy('/controller_manager/unload_controller', UnloadController)
+            resp = unload_controller(name=controller_name)
+            return resp.ok
+        except rospy.ServiceException as e:
+            rprint("Service call failed: %s"%e)
+
+    def load_controller(self, controller_name):
+        rprint("Loading controller")
+        rospy.wait_for_service('/controller_manager/load_controller')
+        try:
+            load_controller = rospy.ServiceProxy('/controller_manager/load_controller', LoadController)
+            resp = load_controller(name=controller_name)
+            return resp.ok
+        except rospy.ServiceException as e:
+            rprint("Service call failed: %s"%e)
+
+    def reload_controller(self, controller_name):
+        self.unload_controller(controller_name)
+        self.load_controller(controller_name)
 
     def stop_controller(self, controller_name):
         rprint("Stopping controller")
