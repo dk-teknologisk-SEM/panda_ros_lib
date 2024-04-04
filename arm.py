@@ -431,7 +431,7 @@ class PandaArm():
         self.move_to_joint(pose)
 
     def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0, only_in_axis=None, speed=0.015) -> 'tuple[list[float]]':
-
+        ## AXIS FOLLOWS THE TCP FRAME AND NOT THE BASE FRAME
         if not target_pose:
             target_pose = self.get_current_pose()
             target_pose.position.z -= search_distance
@@ -439,21 +439,25 @@ class PandaArm():
         current_speed = self.speed
         self.set_speed(speed)
 
-        self.move_to_cartesian(target_pose, wait=False, speed=speed)
+        self.move_to_cartesian(target_pose, wait=False, speed=speed, make_interuptable=False)
 
         start_time = rospy.get_time()
 
         current_contact_state = self.contact_state
 
-        if only_in_axis is not None:
-            while (current_contact_state[only_in_axis] == 0.0) and (rospy.get_time() - start_time < timeout):
-                current_contact_state = self.contact_state
-                sleep(0.01)
-        else:
-            while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
-                current_contact_state = self.contact_state
-                sleep(0.01)
-        
+        try:
+            if only_in_axis is not None:
+                while (current_contact_state[only_in_axis] == 0.0) and (rospy.get_time() - start_time < timeout):
+                    current_contact_state = self.contact_state
+                    sleep(0.01)
+            else:
+                while (1 not in current_contact_state) and (rospy.get_time() - start_time < timeout):
+                    current_contact_state = self.contact_state
+                    sleep(0.01)
+        except KeyboardInterrupt:
+            self.move_group.stop()
+            self.clear_error()
+
         end_state = (self.contact_state, self.collision_state)
 
         self.move_group.stop()
