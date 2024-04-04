@@ -275,10 +275,16 @@ class PandaArm():
             rprint("Could not stop position_joint_trajectory_controller")
 
 
-    def clear_error(self):
-        msg = ErrorRecoveryActionGoal()
-        self.error_publisher.publish(msg)
-        sleep(3)
+    def clear_error(self, force=False):
+        
+        sleep(0.5)
+        if self.robot_mode in [1, 4] or force:
+            msg = ErrorRecoveryActionGoal()
+            self.error_publisher.publish(msg)
+            rprint("Error cleared")
+
+            while self.robot_mode != 2:
+                sleep(0.1)
 
 
     def pose_to_transformation_matrix(self, pose:Pose):
