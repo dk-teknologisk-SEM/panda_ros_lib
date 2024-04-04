@@ -264,6 +264,7 @@ class PandaArm():
     def stop_cartestion_impedance_controller(self):
        
         ok_stop = self.stop_controller("CartesianImpedance_trajectory_controller")
+        self.reload_controller(controller_name="CartesianImpedance_trajectory_controller") 
         if ok_stop:
             ok_start = self.start_controller("position_joint_trajectory_controller")
             if ok_start:
