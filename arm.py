@@ -3,7 +3,7 @@ import rospy
 from geometry_msgs.msg import Wrench, WrenchStamped, Pose, Point, Quaternion
 from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
 from franka_msgs.srv import SetForceTorqueCollisionBehavior
-from control_msgs.msg import FollowJointTrajectoryActionGoal
+from control_msgs.msg import FollowJointTrajectoryActionGoal, FollowJointTrajectoryActionResult, FollowJointTrajectoryActionFeedback
 from cartesian_impedance_controller.msg import ControllerConfig
 
 from time import sleep
@@ -21,6 +21,20 @@ def rprint(msg):
 
 class PandaArm():
     def __init__(self):
+
+        self.T_feature_to_robot = None
+        self.O_T_EE = None
+        self.force = None
+        self.torque = None
+        self.state = None
+        self.robot_mode = None
+        self.contact_state = []
+        self.collision_state = []
+        self.position_trajectory_feedback = None
+        self.position_trajectory_status = None
+        # self.impedance_trajectory_status = None
+        # self.impedance_trajectory_feedback = None
+
         moveit_commander.roscpp_initialize("")
         rospy.init_node('arm', anonymous=True)
         self.move_group = moveit_commander.MoveGroupCommander("panda_arm")
@@ -32,7 +46,8 @@ class PandaArm():
         self.trajectory_publisher = rospy.Publisher("/CartesianImpedance_trajectory_controller/follow_joint_trajectory/goal", FollowJointTrajectoryActionGoal,queue_size=10)
         rospy.Subscriber("/franka_state_controller/F_ext", WrenchStamped, self._force_callback)
         rospy.Subscriber("/franka_state_controller/franka_states", FrankaState, self._franka_state_callback)
-                
+        rospy.Subscriber("/position_joint_trajectory_controller/follow_joint_trajectory/feedback", FollowJointTrajectoryActionFeedback, self._position_controller_trajectory_feedback_callback)
+        # rospy.Subscriber("/CartesianImpedance_trajectory_controller/follow_joint_trajectory/feedback", FollowJointTrajectoryActionFeedback, self._impedance_controller_trajectory_feedback_callback)
         self.start_default_controller()
         self.controller_name = "position_joint_trajectory_controller"
         
@@ -44,13 +59,7 @@ class PandaArm():
         self.speed = 0.15
         self.set_speed(self.speed)
 
-        self.T_feature_to_robot = None
-        self.O_T_EE = None
-        self.force = None
-        self.torque = None
-        self.state = None
-        self.contact_state = []
-        self.collision_state = []
+        
 
         self.stop_controller(self.controller_name)
 
@@ -71,9 +80,37 @@ class PandaArm():
 
     def _franka_state_callback(self, msg: FrankaState):
         self.state = msg
+        self.robot_mode = msg.robot_mode
         self.contact_state = msg.cartesian_contact
         self.collision_state = msg.cartesian_collision
         self.O_T_EE = msg.O_T_EE
+
+    def _position_controller_trajectory_feedback_callback(self, msg: FollowJointTrajectoryActionFeedback):
+        self.position_trajectory_status = msg.status.status # 1 if the trajectory is being executed, 3 if the trajectory is completed
+        self.position_trajectory_feedback = msg.feedback
+
+    def position_controller_trajectory_status(self):
+        while self.position_trajectory_status is None:
+            sleep(0.1)
+    
+        while self.position_trajectory_status != 3:
+            # rprint(self.position_trajectory_status)
+            sleep(0.1)
+        self.position_trajectory_status = None
+        sleep(0.1)
+
+    # def _impedance_controller_trajectory_feedback_callback(self, msg: FollowJointTrajectoryActionFeedback):
+    #     self.impedance_trajectory_status = msg.status.status # 1 if the trajectory is being executed, 3 if the trajectory is completed
+    #     self.impedance_trajectory_feedback = msg.feedback
+        
+    # def impedance_trajectory_status(self):
+    #     while self.impedance_trajectory_status is None:
+    #         sleep(0.1)
+
+    #     while self.impedance_trajectory_status != 3:
+    #         rprint(self.impedance_trajectory_status)
+    #         sleep(0.1)
+    #     self.impedance_trajectory_status = None
 
     def get_base_rotation(self):
         current_pose = self.get_current_pose()
@@ -308,8 +345,8 @@ class PandaArm():
         joint_goal[5] = 1.5411935298621688
         joint_goal[6] = 0.7534486589746342
 
-        self.move_group.go(joint_goal, wait=True)
-        self.move_group.stop()
+        self.move_to_joint(joint_goal)
+
 
     def get_speed(self):
         return self.speed
@@ -321,12 +358,22 @@ class PandaArm():
     def get_speed(self)->'float':
         return self.speed
         
-    def move_to_joint(self, pose_feature, wait=True):
-        pose_robot = self.pose_robot_from_pose_feature(pose_feature)
-        self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
-        self.move_group.go(wait=wait)
+    def move_to_joint(self, pose_feature, wait=False):
+        if isinstance(pose_feature, list):
+            rprint(msg="Moving to joint")
+            self.move_group.go(pose_feature, wait=wait)
+        else:
+            pose_robot = self.pose_robot_from_pose_feature(pose_feature)
+            self.move_group.set_pose_target(pose_robot, end_effector_link="panda_hand_tcp")
+            self.move_group.go(wait=wait)
 
-    def move_to_cartesian(self, pose_feature, wait=True, speed=0.15, iterations=100, skip_parameterzation=False, execute=True):
+        try:
+            self.position_controller_trajectory_status()
+        except KeyboardInterrupt:
+            self.move_group.stop()
+            self.clear_error()
+
+    def move_to_cartesian(self, pose_feature, wait=False, speed=0.15, iterations=100, skip_parameterzation=False, execute=True, make_interuptable=True):
         if isinstance(pose_feature, list):
             updateted_pose_feature = []
             for pose in pose_feature:
@@ -345,6 +392,14 @@ class PandaArm():
             #create switch for controller name
             if self.controller_name == "position_joint_trajectory_controller":
                 self.move_group.execute(plan, wait=wait)
+
+                if make_interuptable:
+                    try:
+                        self.position_controller_trajectory_status()
+                    except KeyboardInterrupt:
+                        self.move_group.stop()
+                        self.clear_error()
+        
             elif self.controller_name == "CartesianImpedance_trajectory_controller":
                 self.set_impedance_controller_trajectory(plan.joint_trajectory)
             else:
