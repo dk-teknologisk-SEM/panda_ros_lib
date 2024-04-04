@@ -36,7 +36,8 @@ class PandaArm():
         # self.impedance_trajectory_feedback = None
 
         moveit_commander.roscpp_initialize("")
-        rospy.init_node('arm', anonymous=True)
+        rospy.init_node('arm', anonymous=True, disable_signals=True)
+        rospy.on_shutdown(self.clean_shutdown)
         self.move_group = moveit_commander.MoveGroupCommander("panda_arm")
         self.move_group.set_end_effector_link("panda_hand_tcp")
 
@@ -73,6 +74,11 @@ class PandaArm():
 
         self.clear_error()
         self.calc_T_feature_to_robot()
+
+    def clean_shutdown(self):
+        ''' Stop robot when shutting down '''
+        rospy.loginfo("System is shutting down. Stopping robot...")
+        self.move_group.stop()
 
     def _force_callback(self, msg: WrenchStamped):
         self.force = msg.wrench.force
