@@ -1,32 +1,48 @@
-import moveit_commander
-import rospy
-from geometry_msgs.msg import Wrench, WrenchStamped, Pose, Point, Quaternion
-from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
-from franka_msgs.srv import SetForceTorqueCollisionBehavior, SetLoad, SetEEFrame
-from control_msgs.msg import (
-    FollowJointTrajectoryActionGoal,
-    FollowJointTrajectoryActionResult,
-    FollowJointTrajectoryActionFeedback,
-)
-from cartesian_impedance_controller.msg import ControllerConfig
-from sensor_msgs.msg import Image, PointCloud2, CameraInfo
-from sensor_msgs import point_cloud2
-from cv_bridge import CvBridge, CvBridgeError
-import cv2
-from copy import deepcopy
-import pyrealsense2 as rs2
-
-from time import sleep
-from .gripper import GripperInterface
-import tf.transformations
-import numpy as np
+from iterativeTimeParameterization import IterativeParabolicTimeParameterization
 from controller_manager_msgs.srv import (
     SwitchController,
     ListControllers,
     UnloadController,
     LoadController,
 )
-from iterativeTimeParameterization import IterativeParabolicTimeParameterization
+from .gripper import GripperInterface
+from iterativeTimeParameterization import \
+    IterativeParabolicTimeParameterization
+from geometry_msgs.msg import Point, Pose, Quaternion, Wrench, WrenchStamped
+from franka_msgs.srv import SetForceTorqueCollisionBehavior
+import pyrealsense2 as rs2
+from copy import deepcopy
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import Image, PointCloud2, CameraInfo
+from control_msgs.msg import (
+    FollowJointTrajectoryActionGoal,
+    FollowJointTrajectoryActionResult,
+    FollowJointTrajectoryActionFeedback,
+)
+from franka_msgs.srv import SetForceTorqueCollisionBehavior, SetLoad, SetEEFrame
+from time import sleep
+
+import moveit_commander
+import numpy as np
+import rospy
+import tf.transformations
+from cartesian_impedance_controller.msg import ControllerConfig
+from control_msgs.msg import (FollowJointTrajectoryActionFeedback,
+                              FollowJointTrajectoryActionGoal,
+                              FollowJointTrajectoryActionResult)
+from controller_manager_msgs.srv import (ListControllers, LoadController,
+                                         SwitchController, UnloadController)
+from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
+<< << << < HEAD
+== == == =
+
+>>>>>> > d9b7c69(Format files and remove some unused code)
+
+<< << << < HEAD
+== == == =
+>>>>>> > d9b7c69(Format files and remove some unused code)
 
 DEBUG = True
 
@@ -49,8 +65,6 @@ class PandaArm:
         self.collision_state = []
         self.position_trajectory_feedback = None
         self.position_trajectory_status = None
-        # self.impedance_trajectory_status = None
-        # self.impedance_trajectory_feedback = None
 
         self.calibrated_collision_state = [0, 0, 0]
         self.calibrated_contact_state = [0, 0, 0]
@@ -222,7 +236,8 @@ class PandaArm:
 
     def callback_pointcloud(self, data):
         assert isinstance(data, PointCloud2)
-        self.gen = point_cloud2.read_points_list(data, field_names=("x", "y", "z"))
+        self.gen = point_cloud2.read_points_list(
+            data, field_names=("x", "y", "z"))
         sleep(1)
         # print(type(self.gen))
 
@@ -235,7 +250,8 @@ class PandaArm:
         img = deepcopy(image)
         depth_pixel = self.depth_image_cv[int(y)][int(x)]
         xyz = "x: " + str(y) + " y: " + str(x) + " z: " + str(depth_pixel)
-        cv2.putText(img, xyz, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        cv2.putText(img, xyz, (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         cv2.circle(img, (int(y), int(x)), 10, (0, 0, 255), -1)
         cv2.imshow("image", img)
         cv2.waitKey(0)
@@ -250,9 +266,12 @@ class PandaArm:
         self.force = msg.wrench.force
         self.torque = msg.wrench.torque
 
-        self.force_x_avg = self.moving_average(self.force.x, self.force_x_moving_avg)
-        self.force_y_avg = self.moving_average(self.force.y, self.force_y_moving_avg)
-        self.force_z_avg = self.moving_average(self.force.z, self.force_z_moving_avg)
+        self.force_x_avg = self.moving_average(
+            self.force.x, self.force_x_moving_avg)
+        self.force_y_avg = self.moving_average(
+            self.force.y, self.force_y_moving_avg)
+        self.force_z_avg = self.moving_average(
+            self.force.z, self.force_z_moving_avg)
 
     def moving_average(self, reading, readings, max_samples=10):
         readings.append(reading)
@@ -291,19 +310,6 @@ class PandaArm:
             sleep(0.1)
         self.position_trajectory_status = None
         sleep(0.1)
-
-    # def _impedance_controller_trajectory_feedback_callback(self, msg: FollowJointTrajectoryActionFeedback):
-    #     self.impedance_trajectory_status = msg.status.status # 1 if the trajectory is being executed, 3 if the trajectory is completed
-    #     self.impedance_trajectory_feedback = msg.feedback
-
-    # def impedance_trajectory_status(self):
-    #     while self.impedance_trajectory_status is None:
-    #         sleep(0.1)
-
-    #     while self.impedance_trajectory_status != 3:
-    #         rprint(self.impedance_trajectory_status)
-    #         sleep(0.1)
-    #     self.impedance_trajectory_status = None
 
     def get_base_rotation(self):
         current_pose = self.get_current_pose()
@@ -347,7 +353,8 @@ class PandaArm:
     def set_force_torque_collision_behavior(
         self, lower_torque, upper_torque, lower_force, upper_force
     ):
-        rospy.wait_for_service("/franka_control/set_force_torque_collision_behavior")
+        rospy.wait_for_service(
+            "/franka_control/set_force_torque_collision_behavior")
         try:
             rospy.loginfo("Setting force torque collision behavior 1")
             set_force_torque_collision_behavior = rospy.ServiceProxy(
@@ -376,7 +383,8 @@ class PandaArm:
         force_mean_y = sum(raw_force_points_y) / calibration_points
         force_mean_z = sum(raw_force_points_z) / calibration_points
 
-        self.calibrate_force_sensor = [force_mean_x, force_mean_y, force_mean_z]
+        self.calibrate_force_sensor = [
+            force_mean_x, force_mean_y, force_mean_z]
 
     def calibrate_contact_state(self, zero_force_sensor):
         calibrated_force = [
@@ -425,16 +433,14 @@ class PandaArm:
 
         self.stop_controller(controller_name)
         self.reload_controller(
-            controller_name="CartesianImpedance_trajectory_controller"
-        )
+            controller_name="CartesianImpedance_trajectory_controller")
         self.start_controller("position_joint_trajectory_controller")
 
-    def get_controllers(self) -> "ListControllers":
-        rospy.wait_for_service("/controller_manager/list_controllers")
+    def get_controllers(self) -> 'ListControllers':
+        rospy.wait_for_service('/controller_manager/list_controllers')
         try:
             list_controllers = rospy.ServiceProxy(
-                "/controller_manager/list_controllers", ListControllers
-            )
+                '/controller_manager/list_controllers', ListControllers)
             resp = list_controllers()
             return resp
         except rospy.ServiceException as e:
@@ -445,8 +451,7 @@ class PandaArm:
         rospy.wait_for_service("/controller_manager/unload_controller")
         try:
             unload_controller = rospy.ServiceProxy(
-                "/controller_manager/unload_controller", UnloadController
-            )
+                '/controller_manager/unload_controller', UnloadController)
             resp = unload_controller(name=controller_name)
             return resp.ok
         except rospy.ServiceException as e:
@@ -457,8 +462,7 @@ class PandaArm:
         rospy.wait_for_service("/controller_manager/load_controller")
         try:
             load_controller = rospy.ServiceProxy(
-                "/controller_manager/load_controller", LoadController
-            )
+                '/controller_manager/load_controller', LoadController)
             resp = load_controller(name=controller_name)
             return resp.ok
         except rospy.ServiceException as e:
@@ -534,7 +538,6 @@ class PandaArm:
         msg.cartesian_damping_factors = cart_damping
         msg.nullspace_stiffness = 30.0
         msg.nullspace_damping_factor = 1.0
-        # msg.q_d_nullspace = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         self.impedance_controller_settings_publisher.publish(msg)
 
     def set_cartestion_impedance_wrench(self, force, torque):
@@ -550,7 +553,8 @@ class PandaArm:
     def start_cartestion_impedance_controller(self, stiffness, damping):
         ok_stop = self.stop_controller("position_joint_trajectory_controller")
         if ok_stop:
-            ok_start = self.start_controller("CartesianImpedance_trajectory_controller")
+            ok_start = self.start_controller(
+                "CartesianImpedance_trajectory_controller")
             if ok_start:
                 self.set_impedance_controller_settings(stiffness, damping)
                 rprint("done setting")
@@ -561,12 +565,14 @@ class PandaArm:
 
     def stop_cartestion_impedance_controller(self):
 
-        ok_stop = self.stop_controller("CartesianImpedance_trajectory_controller")
+        ok_stop = self.stop_controller(
+            "CartesianImpedance_trajectory_controller")
         self.reload_controller(
             controller_name="CartesianImpedance_trajectory_controller"
         )
         if ok_stop:
-            ok_start = self.start_controller("position_joint_trajectory_controller")
+            ok_start = self.start_controller(
+                "position_joint_trajectory_controller")
             if ok_start:
                 rprint("Started position_joint_trajectory_controller")
             else:
@@ -586,7 +592,8 @@ class PandaArm:
                 sleep(0.1)
 
     def pose_to_transformation_matrix(self, pose: Pose):
-        position = np.array([pose.position.x, pose.position.y, pose.position.z])
+        position = np.array(
+            [pose.position.x, pose.position.y, pose.position.z])
         orientation = np.array(
             [
                 pose.orientation.x,
@@ -719,9 +726,11 @@ class PandaArm:
         if isinstance(pose_feature, list):
             updateted_pose_feature = []
             for pose in pose_feature:
-                updateted_pose_feature.append(self.pose_robot_from_pose_feature(pose))
+                updateted_pose_feature.append(
+                    self.pose_robot_from_pose_feature(pose))
         else:
-            updateted_pose_feature = self.pose_robot_from_pose_feature(pose_feature)
+            updateted_pose_feature = self.pose_robot_from_pose_feature(
+                pose_feature)
 
         plan, fraction = self.move_group.compute_cartesian_path(
             (
@@ -736,7 +745,8 @@ class PandaArm:
         if not skip_parameterzation:
             # set cartesian speed using time parameterization
             iptp = IterativeParabolicTimeParameterization()
-            plan = iptp.compute_time_stamps(plan, speed, iteration_max=iterations)
+            plan = iptp.compute_time_stamps(
+                plan, speed, iteration_max=iterations)
 
         if execute:
             # create switch for controller name
@@ -778,7 +788,7 @@ class PandaArm:
         calibrate_force_sensor=True,
         force_threshold=None,
     ) -> "tuple[list[float]]":
-        ## AXIS FOLLOWS THE TCP FRAME AND NOT THE BASE FRAME
+        # AXIS FOLLOWS THE TCP FRAME AND NOT THE BASE FRAME
         if calibrate_force_sensor:
             self.zero_force_sensor()
         calibrated_force = [
@@ -788,7 +798,8 @@ class PandaArm:
         ]
 
         if force_threshold is not None:
-            force_threshold_xyz = [force_threshold, force_threshold, force_threshold]
+            force_threshold_xyz = [force_threshold,
+                                   force_threshold, force_threshold]
         else:
             force_threshold_xyz = self.lower_force
 
@@ -853,7 +864,16 @@ class PandaArm:
             self.clear_error()
             self.set_speed(current_speed)
 
-    def relative_move(self, axis: int, distance: float, speed=0.15):
+        end_state = (self.contact_state, self.collision_state)
+
+        self.move_group.stop()
+        sleep(time)
+
+        self.set_speed(current_speed)
+
+        return end_state
+
+    def relative_move(self, axis: int, distance: float):
         if axis not in [0, 1, 2]:
             rprint("Invalid axis")
             return
