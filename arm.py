@@ -95,10 +95,20 @@ class PandaArm():
         self.move_group.stop()
 
     def _force_callback(self, msg: WrenchStamped):
+        """Callback for receiving force and torque data from the robot via the /franka_state_controller/F_ext topic
+
+        Args:
+            msg: WrenchStamped message containing force and torque data
+        """
         self.force = msg.wrench.force
         self.torque = msg.wrench.torque
 
     def _franka_state_callback(self, msg: FrankaState):
+        """Callback for receiving state data from the robot via the /franka_state_controller/franka_states topic
+
+        Args:
+            msg: FrankaState message containing state data
+        """
         self.state = msg
         self.robot_mode = msg.robot_mode
         self.contact_state = msg.cartesian_contact
@@ -106,11 +116,18 @@ class PandaArm():
         self.O_T_EE = msg.O_T_EE
 
     def _position_controller_trajectory_feedback_callback(self, msg: FollowJointTrajectoryActionFeedback):
+        """Callback for receiving feedback data from the robot via the /position_joint_trajectory_controller/follow_joint_trajectory/feedback topic
+
+        Args:
+            msg: FollowJointTrajectoryActionFeedback message containing feedback data
+        """
         # 1 if the trajectory is being executed, 3 if the trajectory is completed
         self.position_trajectory_status = msg.status.status
         self.position_trajectory_feedback = msg.feedback
 
     def position_controller_trajectory_status(self):
+        """Wait for the position controller to finish executing the current trajectory
+        """
         while self.position_trajectory_status is None:
             sleep(0.1)
 
@@ -121,10 +138,26 @@ class PandaArm():
         sleep(0.1)
 
     def get_base_rotation(self):
+        """Get the current rotation of the robot in the base frame
+
+        Returns:
+            list: List containing the current rotation of the robot in the base frame as [roll, pitch, yaw]
+        """
         current_pose = self.get_current_pose()
         return tf.transformations.euler_from_quaternion([current_pose.orientation.x, current_pose.orientation.y, current_pose.orientation.z, current_pose.orientation.w])
 
     def set_force_torque_collision_behavior(self, lower_torque, upper_torque, lower_force, upper_force):
+        """Set the force torque collision behavior of the robot
+
+        Args:
+            lower_torque: List containing the lower torque values, thees values will be used to determine if contact has occured
+            upper_torque: List containing the upper torque values, thees values will be used to determine if a collision has occured
+            lower_force: List containing the lower force values, thees values will be used to determine if contact has occured
+            upper_force: List containing the upper force values, thees values will be used to determine if a collision has occured
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rospy.wait_for_service(
             '/franka_control/set_force_torque_collision_behavior')
         try:
@@ -140,12 +173,22 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def get_active_controller(self):
+        """Get the name of the currently active controller
+
+        Returns:
+            str: Name of the currently active controller
+        """
         controllers = self.get_controllers()
         for controller in controllers.controller:
             if controller.state == "running" and controller.name not in ["franka_state_controller", "gripper_controller"]:
                 return controller.name
 
     def start_default_controller(self):
+        """Start the default controller (position_joint_trajectory_controller)
+
+            if the current controller is not the default controller, unload the current controller and load the default controller
+
+        """
         controller_name = self.get_active_controller()
         if controller_name == "position_joint_trajectory_controller":
             self.reload_controller(
@@ -161,6 +204,11 @@ class PandaArm():
         self.start_controller("position_joint_trajectory_controller")
 
     def get_controllers(self) -> 'ListControllers':
+        """Get a list of all controllers
+
+        Returns:
+            ListControllers: List of all controllers
+        """
         rospy.wait_for_service('/controller_manager/list_controllers')
         try:
             list_controllers = rospy.ServiceProxy(
@@ -171,6 +219,14 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def unload_controller(self, controller_name):
+        """Unload a controller
+
+        Args:
+            controller_name: Name of the controller to unload
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rprint("Unloading controller")
         rospy.wait_for_service('/controller_manager/unload_controller')
         try:
@@ -182,6 +238,14 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def load_controller(self, controller_name):
+        """Load a controller
+
+        Args:
+            controller_name: Name of the controller to load
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rprint("Loading controller")
         rospy.wait_for_service('/controller_manager/load_controller')
         try:
@@ -193,10 +257,23 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def reload_controller(self, controller_name):
+        """Reload a controller (unload and load the controller)
+
+        Args:
+            controller_name: Name of the controller to reload
+        """
         self.unload_controller(controller_name)
         self.load_controller(controller_name)
 
     def stop_controller(self, controller_name):
+        """Stop a controller
+
+        Args:
+            controller_name: Name of the controller to stop
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rprint("Stopping controller")
         if type(controller_name) == str:
             controller_name = [controller_name]
@@ -211,6 +288,14 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def start_controller(self, controller_name):
+        """Start a controller
+
+        Args:
+            controller_name: Name of the controller to start
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rprint("Starting controller")
         rospy.wait_for_service('/controller_manager/switch_controller')
         try:
@@ -224,11 +309,22 @@ class PandaArm():
             rprint("Service call failed: %s" % e)
 
     def set_impedance_controller_trajectory(self, trajectory):
+        """Set the trajectory for the impedance controller
+
+        Args:
+            trajectory: Trajectory to set for the impedance controller
+        """
         msg = FollowJointTrajectoryActionGoal()
         msg.goal.trajectory = trajectory
         self.trajectory_publisher.publish(msg)
 
     def set_impedance_controller_settings(self, stiffness, damping):
+        """Set the impedance controller settings
+
+        Args:
+            stiffness: List containing the stiffness values for the impedance controller
+            damping: List containing the damping values for the impedance controller
+        """
         msg = ControllerConfig()
         cart_stiffness = Wrench()
         cart_stiffness.force.x = stiffness[0]
@@ -253,6 +349,12 @@ class PandaArm():
         self.impedance_controller_settings_publisher.publish(msg)
 
     def set_cartestion_impedance_wrench(self, force, torque):
+        """Set the wrench for the impedance controller
+
+        Args:
+            force: List containing the force
+            torque: List containing the torque
+        """
         msg = WrenchStamped()
         msg.wrench.force.x = force[0]
         msg.wrench.force.y = force[1]
@@ -263,6 +365,12 @@ class PandaArm():
         self.impedance_controller_wrench_publisher.publish(msg)
 
     def start_cartestion_impedance_controller(self, stiffness, damping):
+        """Start the CartesianImpedance_trajectory_controller
+
+        Args:
+            stiffness: List containing the stiffness values for the impedance controller
+            damping: List containing the damping values for the impedance controller
+        """
         ok_stop = self.stop_controller("position_joint_trajectory_controller")
         if ok_stop:
             ok_start = self.start_controller(
@@ -276,7 +384,8 @@ class PandaArm():
             rprint("Could not stop position_joint_trajectory_controller")
 
     def stop_cartestion_impedance_controller(self):
-
+        """Stop the CartesianImpedance_trajectory_controller and start the position_joint_trajectory_controller
+        """
         ok_stop = self.stop_controller(
             "CartesianImpedance_trajectory_controller")
         self.reload_controller(
@@ -292,7 +401,11 @@ class PandaArm():
             rprint("Could not stop position_joint_trajectory_controller")
 
     def clear_error(self, force=False):
+        """Clear the error on the robot
 
+        Args:
+            force: If true will clear error even when none are present. Defaults to False.
+        """
         sleep(0.5)
         if self.robot_mode in [1, 4] or force:
             msg = ErrorRecoveryActionGoal()
@@ -311,6 +424,14 @@ class PandaArm():
         self.current_feature_zeropoint = zero_point
 
     def pose_to_transformation_matrix(self, pose: Pose):
+        """Convert a Pose message to a transformation matrix
+
+        Args:
+            pose: Pose message to convert
+
+        Returns:
+            np.array: Transformation matrix
+        """
         position = np.array(
             [pose.position.x, pose.position.y, pose.position.z])
         orientation = np.array(
@@ -320,11 +441,21 @@ class PandaArm():
         return np.vstack([np.hstack([R, p.reshape(-1, 1)]), [0, 0, 0, 1]])
 
     def transformation_matrix_to_pose(self, T):
+        """Convert a transformation matrix to a Pose message
+
+        Args:
+            T: Transformation matrix to convert
+
+        Returns:
+            Pose: Pose message
+        """
         position = T[:3, 3]
         orientation = tf.transformations.quaternion_from_matrix(T)
         return Pose(position=Point(*position), orientation=Quaternion(*orientation))
 
     def calc_T_feature_to_robot(self):
+        """Calculate the transformation matrix from the feature frame to the robot frame
+        """
         pose_wrt_robot = self.current_feature_zeropoint
         pose_wrt_feature = Pose(position=Point(
             x=0.0, y=0.0, z=0.0), orientation=Quaternion(x=1.0, y=0.0, z=0.0, w=0.0))
@@ -336,6 +467,14 @@ class PandaArm():
         self.T_feature_to_robot = T_robot @ np.linalg.inv(T_feature)
 
     def pose_robot_from_pose_feature(self, pose_feature: Pose):
+        """Convert a pose from the feature frame to the robot frame
+
+        Args:
+            pose_feature: Pose in the feature frame
+
+        Returns:
+            Pose: Pose in the robot frame
+        """
         T_feature = self.pose_to_transformation_matrix(pose_feature)
         # T_R = T_FR @ T_F
         T_robot = self.T_feature_to_robot @ T_feature
@@ -343,6 +482,14 @@ class PandaArm():
         return pose_robot
 
     def pose_feature_from_pose_robot(self, pose_robot: Pose):
+        """Convert a pose from the robot frame to the feature frame
+
+        Args:
+            pose_robot: Pose in the robot frame
+
+        Returns:
+            Pose: Pose in the feature frame
+        """
         T_robot = self.pose_to_transformation_matrix(pose_robot)
         # T_F = inv(T_FR) @ T_R
         T_feature = np.linalg.inv(self.T_feature_to_robot) @ T_robot
@@ -350,11 +497,20 @@ class PandaArm():
         return pose_feature
 
     def align_to_base(self, x=True, y=True, z=False):
+        """Align the robot to the base frame
+
+        Args:
+            x: Whether to align the robot in the x-axis. Defaults to True.
+            y: Whether to align the robot in the y-axis. Defaults to True.
+            z: Whether to align the robot in the z-axis. Defaults to False.
+        """
         current_rotation_from_base = self.get_base_rotation()
         self.rotate_abs(
             np.pi if x else current_rotation_from_base[0], 0 if y else current_rotation_from_base[1], 0 if z else current_rotation_from_base[2])
 
     def move_to_neutral(self):
+        """Move the robot to the neutral pose
+        """
         # neutral_pose:
         #     panda_joint1: -0.017792060227770554
         #     panda_joint2: -0.7601235411041661
@@ -375,16 +531,25 @@ class PandaArm():
         self.move_to_joint(joint_goal)
 
     def get_speed(self):
+        """Get the current speed of the robot"""
         return self.speed
 
     def set_speed(self, speed):
+        """Set the speed of the robot
+
+        Args:
+            speed: Speed to set
+        """
         self.speed = speed
         self.move_group.set_max_velocity_scaling_factor(self.speed)
 
-    def get_speed(self) -> 'float':
-        return self.speed
-
     def move_to_joint(self, pose_feature, wait=False):
+        """Move the robot to a joint pose
+
+        Args:
+            pose_feature: Pose to move to
+            wait: Whether to execute the move synchronously or asynchronously. Defaults to False.
+        """
         if isinstance(pose_feature, list):
             rprint(msg="Moving to joint")
             self.move_group.go(pose_feature, wait=wait)
@@ -401,6 +566,20 @@ class PandaArm():
             self.clear_error()
 
     def move_to_cartesian(self, pose_feature, wait=False, speed=0.15, iterations=100, skip_parameterzation=False, execute=True, make_interuptable=True):
+        """Move the robot to a cartesian pose
+
+        Args:
+            pose_feature: Pose to move to
+            wait: Whether to execute the move synchronously or asynchronously. Defaults to False.
+            speed: How fast to move. Defaults to 0.15.
+            iterations: How many iterations of time parameterization to run. Defaults to 100.
+            skip_parameterzation: Whether to skip time parameterization. Defaults to False.
+            execute: If move should begin immediately or not. Defaults to True.
+            make_interuptable: If it should be possible to interrupt the movement. Defaults to True.
+
+        Returns:
+            RobotTrajectory: A time parameterized RobotTrajectory object using the given speed.
+        """
         if isinstance(pose_feature, list):
             updateted_pose_feature = []
             for pose in pose_feature:
@@ -439,16 +618,41 @@ class PandaArm():
             return plan
 
     def get_current_pose(self) -> 'Pose':
+        """Get the current pose of the robot
+
+        Returns:
+            Pose: Current pose of the robot
+        """
         pose_robot = self.move_group.get_current_pose().pose
         return self.pose_feature_from_pose_robot(pose_robot)
 
     def contact(self):
+        """Shortcut for move_to_contact
+        """
         self.move_to_contact()
 
     def move(self, pose):
+        """Shortcut for move_to_joint
+
+        Args:
+            pose: Pose to move to
+        """
         self.move_to_joint(pose)
 
     def move_to_contact(self, target_pose=None, search_distance=0.3, time=0.5, timeout=10.0, only_in_axis=None, speed=0.015) -> 'tuple[list[float]]':
+        """Move the robot to a contact state
+
+        Args:
+            target_pose: Pose to move towards. Defaults to None.
+            search_distance: How far to search in meters. Defaults to 0.3.
+            time: How long to wait at contact state. Defaults to 0.5.
+            timeout: how long to search before timeout. Defaults to 10.0.
+            only_in_axis: if set to 1, 2 or 3 tells robot to only search in the given axis. Defaults to None.
+            speed: How fast to move while searching. Defaults to 0.015.
+
+        Returns:
+            tuple[list[float]]: Tuple containing the contact and collision state of the robot
+        """
         # AXIS FOLLOWS THE TCP FRAME AND NOT THE BASE FRAME
         if not target_pose:
             target_pose = self.get_current_pose()
@@ -487,6 +691,15 @@ class PandaArm():
         return end_state
 
     def relative_move(self, axis: int, distance: float):
+        """Move the robot relative to the current position
+
+        Args:
+            axis: Axis to move along
+            distance: Distance to move
+
+        Returns:
+            Pose: Pose of the robot after moving
+        """
         if axis not in [0, 1, 2]:
             rprint("Invalid axis")
             return
@@ -504,6 +717,18 @@ class PandaArm():
         return pose
 
     def rotate(self, x, y, z, move=True, direction=True):
+        """Rotate the robot relative to the current orientation
+
+        Args:
+            x: How much to rotate around the x-axis
+            y: How much to rotate around the y-axis
+            z: How much to rotate around the z-axis
+            move: Whether the move should be executed immediately. Defaults to True.
+            direction: If set will allow robot to reverse the previous rotation. Defaults to True.
+
+        Returns:
+            _description_
+        """
         q_r = tf.transformations.quaternion_from_euler(x, y, z)
 
         current_orientation = self.get_current_pose().orientation
@@ -528,6 +753,17 @@ class PandaArm():
         return target_pose
 
     def rotate_abs(self, x, y, z, move=True):
+        """Rotate the robot to an absolute orientation
+
+        Args:
+            x: Where to rotate around the x-axis
+            y: Where to rotate around the y-axis
+            z: Where to rotate around the z-axis
+            move: Whether the move should be executed immediately. Defaults to True.
+
+        Returns:
+            Pose: Pose of the robot after rotating
+        """
         target_quaternion = tf.transformations.quaternion_from_euler(x, y, z)
         ori = Quaternion(x=target_quaternion[0], y=target_quaternion[1],
                          z=target_quaternion[2], w=target_quaternion[3])
