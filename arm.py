@@ -40,6 +40,8 @@ class PandaArm():
         self.collision_state = []
         self.position_trajectory_feedback = None
         self.position_trajectory_status = None
+        self.current_feature_zeropoint = Pose(position=Point(
+            x=0, y=0, z=0), orientation=Quaternion(x=0, y=0, z=0, w=1))
 
         moveit_commander.roscpp_initialize("")
         rospy.init_node('arm', anonymous=True, disable_signals=True)
@@ -300,6 +302,14 @@ class PandaArm():
             while self.robot_mode != 2:
                 sleep(0.1)
 
+    def set_current_feature_zeropoint(self, zero_point: Pose):
+        """Set the current feature zero point from where all robot poses are calculated
+
+        Args:
+            zero_point: Pose of the feature zero point
+        """
+        self.current_feature_zeropoint = zero_point
+
     def pose_to_transformation_matrix(self, pose: Pose):
         position = np.array(
             [pose.position.x, pose.position.y, pose.position.z])
@@ -315,18 +325,7 @@ class PandaArm():
         return Pose(position=Point(*position), orientation=Quaternion(*orientation))
 
     def calc_T_feature_to_robot(self):
-        # position:
-        #     x: 0.38034927530988794
-        #     y: -0.3282111268132951
-        #     z: 0.03519540893130724
-        # orientation:
-        #     x: 0.9999806260596
-        #     y: -0.002497528511030583
-        #     z: 0.004649514434723419
-        #     w: 0.0033002836708662677
-
-        pose_wrt_robot = Pose(position=Point(x=0.38034927530988794, y=-0.3282111268132951, z=0.03519540893130724),
-                              orientation=Quaternion(x=0.9999806260596, y=-0.002497528511030583, z=0.004649514434723419, w=0.0033002836708662677))
+        pose_wrt_robot = self.current_feature_zeropoint
         pose_wrt_feature = Pose(position=Point(
             x=0.0, y=0.0, z=0.0), orientation=Quaternion(x=1.0, y=0.0, z=0.0, w=0.0))
 
