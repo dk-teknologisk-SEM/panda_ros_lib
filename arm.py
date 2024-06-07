@@ -1,31 +1,10 @@
-from iterativeTimeParameterization import IterativeParabolicTimeParameterization
-from controller_manager_msgs.srv import (
-    SwitchController,
-    ListControllers,
-    UnloadController,
-    LoadController,
-)
-from .gripper import GripperInterface
-from iterativeTimeParameterization import \
-    IterativeParabolicTimeParameterization
-from geometry_msgs.msg import Point, Pose, Quaternion, Wrench, WrenchStamped
-from franka_msgs.srv import SetForceTorqueCollisionBehavior
-import pyrealsense2 as rs2
 from copy import deepcopy
-import cv2
-from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs import point_cloud2
-from sensor_msgs.msg import Image, PointCloud2, CameraInfo
-from control_msgs.msg import (
-    FollowJointTrajectoryActionGoal,
-    FollowJointTrajectoryActionResult,
-    FollowJointTrajectoryActionFeedback,
-)
-from franka_msgs.srv import SetForceTorqueCollisionBehavior, SetLoad, SetEEFrame
 from time import sleep
 
+import cv2
 import moveit_commander
 import numpy as np
+import pyrealsense2 as rs2
 import rospy
 import tf.transformations
 from cartesian_impedance_controller.msg import ControllerConfig
@@ -34,15 +13,18 @@ from control_msgs.msg import (FollowJointTrajectoryActionFeedback,
                               FollowJointTrajectoryActionResult)
 from controller_manager_msgs.srv import (ListControllers, LoadController,
                                          SwitchController, UnloadController)
+from cv_bridge import CvBridge, CvBridgeError
 from franka_msgs.msg import ErrorRecoveryActionGoal, FrankaState
-<< << << < HEAD
-== == == =
+from franka_msgs.srv import (SetEEFrame, SetForceTorqueCollisionBehavior,
+                             SetLoad)
+from geometry_msgs.msg import Point, Pose, Quaternion, Wrench, WrenchStamped
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 
->>>>>> > d9b7c69(Format files and remove some unused code)
+from iterativeTimeParameterization import \
+    IterativeParabolicTimeParameterization
 
-<< << << < HEAD
-== == == =
->>>>>> > d9b7c69(Format files and remove some unused code)
+from .gripper import GripperInterface
 
 DEBUG = True
 
@@ -65,6 +47,8 @@ class PandaArm:
         self.collision_state = []
         self.position_trajectory_feedback = None
         self.position_trajectory_status = None
+        self.current_feature_zeropoint = Pose(position=Point(
+            x=0, y=0, z=0), orientation=Quaternion(x=0, y=0, z=0, w=1))
 
         self.calibrated_collision_state = [0, 0, 0]
         self.calibrated_contact_state = [0, 0, 0]
@@ -591,6 +575,14 @@ class PandaArm:
             while self.robot_mode != 2:
                 sleep(0.1)
 
+    def set_current_feature_zeropoint(self, zero_point: Pose):
+        """Set the current feature zero point from where all robot poses are calculated
+
+        Args:
+            zero_point: Pose of the feature zero point
+        """
+        self.current_feature_zeropoint = zero_point
+
     def pose_to_transformation_matrix(self, pose: Pose):
         position = np.array(
             [pose.position.x, pose.position.y, pose.position.z])
@@ -612,31 +604,9 @@ class PandaArm:
         return Pose(position=Point(*position), orientation=Quaternion(*orientation))
 
     def calc_T_feature_to_robot(self):
-        # position:
-        #     x: 0.38034927530988794
-        #     y: -0.3282111268132951
-        #     z: 0.03519540893130724
-        # orientation:
-        #     x: 0.9999806260596
-        #     y: -0.002497528511030583
-        #     z: 0.004649514434723419
-        #     w: 0.0033002836708662677
-
-        pose_wrt_robot = Pose(
-            position=Point(
-                x=0.38034927530988794, y=-0.3282111268132951, z=0.03519540893130724
-            ),
-            orientation=Quaternion(
-                x=0.9999806260596,
-                y=-0.002497528511030583,
-                z=0.004649514434723419,
-                w=0.0033002836708662677,
-            ),
-        )
-        pose_wrt_feature = Pose(
-            position=Point(x=0.0, y=0.0, z=0.0),
-            orientation=Quaternion(x=1.0, y=0.0, z=0.0, w=0.0),
-        )
+        pose_wrt_robot = self.current_feature_zeropoint
+        pose_wrt_feature = Pose(position=Point(
+            x=0.0, y=0.0, z=0.0), orientation=Quaternion(x=1.0, y=0.0, z=0.0, w=0.0))
 
         T_robot = self.pose_to_transformation_matrix(pose_wrt_robot)
         T_feature = self.pose_to_transformation_matrix(pose_wrt_feature)
