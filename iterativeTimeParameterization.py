@@ -4,10 +4,23 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 
 class IterativeParabolicTimeParameterization:
+    """A class to time parameterize a robot trajectory using the Iterative Parabolic Time Parameterization algorithm.
+    """
+
     def __init__(self):
         pass
 
     def compute_time_stamps(self, plan: RobotTrajectory, speed, iteration_max=100):
+        """Computes the time stamps for a given robot trajectory.
+
+        Args:
+            plan: A RobotTrajectory object containing the trajectory to be time parameterized.
+            speed: A float representing how fast the robot should move.
+            iteration_max: How many iterations to run, default should be fine in most cases. Defaults to 100.
+
+        Returns:
+            RobotTrajectory: A time parameterized RobotTrajectory object using the given speed.
+        """
 
         num_points = len(plan.joint_trajectory.points)
         time_diff = [0.0] * (num_points - 1)
@@ -20,6 +33,17 @@ class IterativeParabolicTimeParameterization:
         return plan
 
     def apply_velocity_constraints(self, plan: RobotTrajectory, time_diff, speed):
+        """Applies velocity constraints to the given plan.
+
+        Args:
+            plan: A RobotTrajectory object containing the trajectory to be time parameterized.
+            time_diff: A list of floats representing the time difference between each point.
+            speed: A float representing how fast the robot should move.
+
+        Returns:
+            list: A list of floats representing the time difference between each point.
+            RobotTrajectory: A time parameterized RobotTrajectory object using the given speed.
+        """
         for i in range(len(plan.joint_trajectory.points)-1):
             current_point: JointTrajectoryPoint = plan.joint_trajectory.points[i]
             next_point: JointTrajectoryPoint = plan.joint_trajectory.points[i+1]
@@ -41,6 +65,8 @@ class IterativeParabolicTimeParameterization:
         return time_diff, plan
 
     def findT1(self, dq1, dq2, dt1, dt2, a_max):
+        """Iteratively expand dt1 interval by a constant factor until within acceleration constraints.
+        """
         mult_factor = 1.01
         v1 = dq1 / dt1
         v2 = dq2 / dt2
@@ -69,6 +95,18 @@ class IterativeParabolicTimeParameterization:
         return dt2
 
     def apply_acceleration_constraints(self, plan: RobotTrajectory, time_diff, speed, iteration_max=100):
+        """Applies acceleration constraints to the given plan.
+
+        Args:
+            plan: A RobotTrajectory object containing the trajectory to be time parameterized.
+            time_diff: A list of floats representing the time difference between each point.
+            speed: A float representing how fast the robot should move.
+            iteration_max: How many iterations to run, default should be fine in most cases. Defaults to 100.
+
+        Returns:
+            list: A list of floats representing the time difference between each point.
+            RobotTrajectory: A time parameterized RobotTrajectory object using the given speed.
+        """
         num_updates = 0
         iteration = 0
         backwards = False
@@ -165,6 +203,8 @@ class IterativeParabolicTimeParameterization:
         return time_diff, plan
 
     def update_trajectory(self, plan: RobotTrajectory, time_diff):
+        """ Takes the time differences, and updates the timestamps, velocities and accelerations in the trajectory.
+        """
         time_sum = 0.0
         num_points = len(plan.joint_trajectory.points)
         vars = ['panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4', 'panda_joint5',
