@@ -1,4 +1,13 @@
-# Install
+
+# TOC
+1. [Installation](#install)
+1. [How to run](#run)
+1. [How to add robot controllers](#add-controller)
+1. [How to add/use custom TCPs](#adduse-tcps)
+1. [Example](#example)
+1. [Help](#help)
+
+## Install
 1. Install Ubuntu 20.04 Focal Fossa: [Guide](https://ubuntu.com/tutorials/install-ubuntu-desktop)
 1. Install ROS Noetic: [Guide](https://wiki.ros.org/noetic/Installation/Ubuntu)
     1.```sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'```
@@ -87,7 +96,7 @@
     1. ```cd ~/robosapiens```
     1. Clone Code: ```git clone git@github.com:dk-teknologisk-SEM/panda_ros_lib.git```
 
-# Run
+## Run
 1. Robot Connection
     1. New terminal
     1. source stuff
@@ -96,3 +105,36 @@
     1. New terminal
     1. source stuff
     1. ```python3 demo.py```
+
+
+
+## Add controller
+Controllers can be added to your program by first adding the new controller to default_controllers.yaml () and then loading it in ros_controllers.launch ().
+
+NOTE: only 1! controller can be active at any one time, therefore all but 1 of the loaded controllers in ros_controllers.launch needs the "--stopped" argument.
+
+![default_controllers](/img/default_controllers.png)
+![ros_controllers](/img/ros_controllers.png)
+
+Once the controller has been loaded, you can start/stop them by calling ```arm.start_controller``` and ```arm.stop_controller```.
+
+A list of all possible controllers can be obtained by either calling ```arm.get_controllers``` or by manually calling the ```/controller_manager/list_controllers``` ros service
+
+## Add/Use TCPs
+To add custom TCPs to your program, you need to add the TCP info to the robot URDF file, it can technically be in any of the included files, but I suggest that you add it to franka_hand.xacro file () 
+
+Each TCP needs to reference the default franka hand TCP (or robot flange) as it parent to place it on the robot correctly.
+
+![franka_hand](/img/franka_hand.png)
+
+NOTE: All programs need to be restarted for theese changes to take effect.
+
+After the program has been started, the active TCP can be set by calling ```arm.move_group.set_end_effector_link(end_effector_link)``` with ```end_effector_link``` being the name of the link in the URDF file, in combination with ```arm.set_EE_frame``` and potentially ```arm.set_load``` depending on the tool;
+
+these functions are documented in the code.
+
+## Example
+See [here](https://github.com/dk-teknologisk-SEM/RB24-robosapiens)
+
+## Help
+Contact [MDIH](https://github.com/dk-teknologisk-mdih) or [SEM](https://github.com/dk-teknologisk-sem)
