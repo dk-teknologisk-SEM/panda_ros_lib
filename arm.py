@@ -161,6 +161,11 @@ class PandaArm:
         self.calc_T_feature_to_robot()
 
     def convert_depth_image(self, ros_image):
+        """Convert the depth image from ROS format to OpenCV format
+
+        Args:
+            ros_image: ROS image message
+        """
         bridge = CvBridge()
         # Use cv_bridge() to convert the ROS image to OpenCV format
         try:
@@ -180,6 +185,11 @@ class PandaArm:
         # Convert the depth image to a Numpy array
 
     def imageDepthInfoCallback(self, cameraInfo):
+        """Callback for the camera info
+
+        Args:
+            cameraInfo: CameraInfo ros message
+        """
         try:
             # import pdb; pdb.set_trace()
             if self.intrinsics:
@@ -201,6 +211,11 @@ class PandaArm:
             return
 
     def get_color_image(self, ros_image):
+        """Get the color image from the camera
+
+        Args:
+            ros_image: ROS image message
+        """
         bridge = CvBridge()
         try:
             self.color_image = bridge.imgmsg_to_cv2(
@@ -210,6 +225,15 @@ class PandaArm:
             rprint(e)
 
     def get_camera_XYZ(self, x, y):
+        """Get the Z value of a pixel in the depth image
+
+        Args:
+            x: x coordinate of the pixel
+            y: y coordinate of the pixel
+
+        Returns:
+            float: Z value of the pixel
+        """
         if self.depth_image_cv is not None:
             depth_pixel = self.depth_image_cv[int(y)][int(x)]
             result = rs2.rs2_deproject_pixel_to_point(
@@ -219,6 +243,11 @@ class PandaArm:
             return depth_pixel
 
     def callback_pointcloud(self, data):
+        """Callback for the point cloud data
+
+        Args:
+            data: PointCloud2 ros message
+        """
         assert isinstance(data, PointCloud2)
         self.gen = point_cloud2.read_points_list(
             data, field_names=("x", "y", "z"))
@@ -226,11 +255,24 @@ class PandaArm:
         # print(type(self.gen))
 
     def get_pointcloud(self, x, y):
+        """Get the point cloud data of a pixel
+
+        Args:
+            x: x coordinate of the pixel
+            y: y coordinate of the pixel
+        """
         for p in self.gen:
             if p.x == x and p.y == y:
                 print(" x : %.3f  y: %.3f  z: %.3f" % (p.x, p.y, p.z))
 
     def show_image(self, image, x, y):
+        """Show an image with a circle at a specific pixel
+
+        Args:
+            image: Image to show
+            x: x coordinate of the circle center
+            y: y coordinate of the circle center
+        """
         img = deepcopy(image)
         depth_pixel = self.depth_image_cv[int(y)][int(x)]
         xyz = "x: " + str(y) + " y: " + str(x) + " z: " + str(depth_pixel)
@@ -263,6 +305,16 @@ class PandaArm:
             self.force.z, self.force_z_moving_avg)
 
     def moving_average(self, reading, readings, max_samples=10):
+        """Calculate the moving average of a reading
+
+        Args:
+            reading: Reading to calculate the moving average of
+            readings: List of previous readings
+            max_samples: How many readings to average over. Defaults to 10.
+
+        Returns:
+            _description_
+        """
         readings.append(reading)
         avg = float(sum(readings)) / max(len(readings), 1)
         # print('current average =', avg)
@@ -273,6 +325,16 @@ class PandaArm:
         return avg
 
     def force_magnitude(self, force_x, force_y, force_z):
+        """Calculate the magnitude of a force vector
+
+        Args:
+            force_x: X component of the force vector
+            force_y: Y component of the force vector
+            force_z: Z component of the force vector
+
+        Returns:
+            float: Magnitude of the force vector
+        """
         return np.sqrt(force_x**2 + force_y**2 + force_z**2)
 
     def _franka_state_callback(self, msg: FrankaState):
@@ -331,6 +393,16 @@ class PandaArm:
         f_center_load: list,
         load_inertia: list,
     ):
+        """Set the load of the robot
+
+        Args:
+            m_load: Mass in kg
+            f_center_load: Center of mass in meters, given as [x, y, z]
+            load_inertia: Inertia matrix in kg*m^2, given as [Ixx, Ixy, Ixz, Iyx, Iyy, Iyz, Izx, Izy, Izz]
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         rospy.wait_for_service("/franka_control/set_load")
         try:
             rospy.loginfo("Setting load")
@@ -341,6 +413,14 @@ class PandaArm:
             rprint("Service call failed: %s" % e)
 
     def set_EE_frame(self, NE_T_EE):
+        """Set the end effector frame
+
+        Args:
+            NE_T_EE: Transformation matrix from the nominal end effector frame to the end effector frame
+
+        Returns:
+            bool: True if the service call was successful, False otherwise
+        """
         # norminal end effector to end effector transformation
         rospy.wait_for_service("/franka_control/set_EE_frame")
         try:
@@ -383,6 +463,12 @@ class PandaArm:
             rprint("Service call failed: %s" % e)
 
     def zero_force_sensor(self, calibration_points=20, sleep_time=0.0333):
+        """Calibrate the force sensor
+
+        Args:
+            calibration_points: How many sensor readings to calibrate over. Defaults to 20.
+            sleep_time: How long to wait before each reading when calibrating. Defaults to 0.0333.
+        """
         raw_force_points_x = []
         raw_force_points_y = []
         raw_force_points_z = []
@@ -399,6 +485,11 @@ class PandaArm:
             force_mean_x, force_mean_y, force_mean_z]
 
     def calibrate_contact_state(self, zero_force_sensor):
+        """Calibrate the threshold values for the contact state
+
+        Args:
+            zero_force_sensor: List containing the zero force sensor values
+        """
         calibrated_force = [
             self.force.x - zero_force_sensor[0],
             self.force.y - zero_force_sensor[1],
